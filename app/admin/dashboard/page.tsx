@@ -143,9 +143,9 @@ function CommaSeparatedInput({
     onChange(items, val);
   }
 
-  function handleBlur() {
+  function handleBlur(e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setIsFocused(false);
-    focusOff();
+    focusOff(e);
     const items = localText
       .split(/[\n,]/)
       .map((s) => s.trim())
@@ -201,9 +201,9 @@ function CommaSeparatedInput({
           placeholder={placeholder}
           onChange={(e) => handleChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={() => {
+          onFocus={(e) => {
             setIsFocused(true);
-            focusOn();
+            focusOn(e);
           }}
           onBlur={handleBlur}
           className={inputCls + " resize-none"}
@@ -216,9 +216,9 @@ function CommaSeparatedInput({
           placeholder={placeholder}
           onChange={(e) => handleChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={() => {
+          onFocus={(e) => {
             setIsFocused(true);
-            focusOn();
+            focusOn(e);
           }}
           onBlur={handleBlur}
           className={inputCls}
