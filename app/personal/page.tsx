@@ -208,8 +208,8 @@ export default function PersonalPage() {
     ) ?? [];
 
   return (
-    <main className="h-screen w-screen overflow-y-auto md:pl-20 px-4 pb-28 md:pb-16 pt-8 relative">
-      <div className="max-w-6xl mx-auto fade-up space-y-6">
+    <main className="h-screen w-full overflow-y-auto overflow-x-hidden md:pl-24 lg:pl-28 px-4 sm:px-6 md:pr-10 lg:pr-14 pt-8 md:pt-10 pb-28 md:pb-16 relative">
+      <div className="w-full max-w-6xl mx-auto fade-up space-y-6">
 
         {/* ── Page Header ── */}
         <div className="flex items-center justify-between flex-wrap gap-4">

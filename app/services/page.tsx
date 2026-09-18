@@ -35,8 +35,8 @@ export default function ServicesPage() {
   const items = data?.items ?? [];
 
   return (
-    <main className="h-screen w-screen overflow-y-auto md:pl-20 px-4 pb-24 md:pb-8 pt-8">
-      <div className="max-w-5xl mx-auto fade-up">
+    <main className="h-screen w-full overflow-y-auto overflow-x-hidden md:pl-24 lg:pl-28 px-4 sm:px-6 md:pr-10 lg:pr-14 pt-8 md:pt-10 pb-28 md:pb-16 relative">
+      <div className="w-full max-w-5xl mx-auto fade-up">
         <div className="mb-8">
           <p className="text-xs uppercase tracking-widest mb-1 font-syne" style={{ color: "hsl(var(--p))" }}>What I do</p>
           <h1 className="text-3xl font-bold font-syne text-white">Services</h1>

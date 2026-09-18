@@ -12,6 +12,7 @@ import type { Stat } from "@/lib/siteConfig";
 import HeroCanvas from "@/components/HeroCanvas";
 import TiltCard from "@/components/TiltCard";
 import { sound } from "@/lib/sound";
+import { getPlainExcerpt } from "@/lib/utils";
 
 interface Project {
   id: string;
@@ -509,10 +510,9 @@ export default function HomePage() {
                           </h3>
 
                           {p.description && (
-                            <div
-                              className="text-white/45 text-xs mt-2 line-clamp-2 leading-relaxed project-preview-html"
-                              dangerouslySetInnerHTML={{ __html: p.description }}
-                            />
+                            <p className="text-white/45 text-xs mt-2 line-clamp-2 leading-relaxed">
+                              {getPlainExcerpt(p.description)}
+                            </p>
                           )}
                         </div>
 

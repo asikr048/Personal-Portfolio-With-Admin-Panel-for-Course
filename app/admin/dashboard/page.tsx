@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import ImageUpload from "@/components/admin/ImageUpload";
 import { DEFAULT_CONFIG, type SiteConfig } from "@/lib/siteConfig";
 import { HIGHLIGHT_ICON_NAMES, highlightIcon, type HighlightItem } from "@/lib/highlightIcons";
+import { sanitizeProjectHtml } from "@/lib/utils";
 import type { BlogPost, BlogData } from "@/app/api/blog/route";
 import type { ContactMessage } from "@/app/api/messages/route";
 
@@ -732,7 +733,7 @@ export default function AdminDashboard() {
                         className="w-full p-4 rounded-xl min-h-[110px] project-html-content text-sm overflow-y-auto max-h-[220px]"
                         style={{ background: "hsl(210 60% 6%)", border: "1px solid hsl(var(--p) / 0.25)" }}
                         dangerouslySetInnerHTML={{
-                          __html: editProject.description || "<p class='text-white/30 italic text-xs'>No description yet. Switch to Code to add HTML content.</p>",
+                          __html: sanitizeProjectHtml(editProject.description) || "<p class='text-white/30 italic text-xs'>No description yet. Switch to Code to add HTML content.</p>",
                         }}
                       />
                     )}

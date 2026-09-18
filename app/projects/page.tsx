@@ -4,6 +4,7 @@ import { ExternalLink, Github, Calendar, Layers, Star, Code2, X, Cpu, CheckCircl
 import { AnimatePresence, motion } from "framer-motion";
 import TiltCard from "@/components/TiltCard";
 import { sound } from "@/lib/sound";
+import { getPlainExcerpt, sanitizeProjectHtml } from "@/lib/utils";
 
 interface Project {
   id: string;
@@ -170,10 +171,9 @@ function ProjectCard({
 
           {/* Description */}
           {p.description && (
-            <div
-              className="text-white/45 text-xs leading-relaxed mt-3.5 line-clamp-2 project-preview-html"
-              dangerouslySetInnerHTML={{ __html: p.description }}
-            />
+            <p className="text-white/45 text-xs leading-relaxed mt-3.5 line-clamp-2">
+              {getPlainExcerpt(p.description)}
+            </p>
           )}
 
           {/* Stat sub-panels */}
@@ -344,8 +344,8 @@ function ProjectModal({
                 <div className="mt-4">
                   {data.p.description && (
                     <div
-                      className="project-html-content text-sm leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: data.p.description }}
+                      className="project-html-content text-sm leading-relaxed overflow-hidden break-words max-w-full"
+                      dangerouslySetInnerHTML={{ __html: sanitizeProjectHtml(data.p.description) }}
                     />
                   )}
 
@@ -450,8 +450,8 @@ export default function ProjectsPage() {
   const filtered = filter === "All" ? projects : projects.filter((p) => p.category === filter);
 
   return (
-    <main className="h-screen w-screen overflow-y-auto md:pl-20 px-4 pb-24 md:pb-8 pt-8 relative">
-      <div className="max-w-5xl mx-auto fade-up">
+    <main className="h-screen w-full overflow-y-auto overflow-x-hidden md:pl-24 lg:pl-28 px-4 sm:px-6 md:pr-10 lg:pr-14 pt-8 md:pt-10 pb-28 md:pb-16 relative">
+      <div className="w-full max-w-6xl mx-auto fade-up">
         {/* Header */}
         <div className="mb-8">
           <p className="text-xs uppercase tracking-widest mb-1 font-syne" style={{ color: "hsl(var(--p))" }}>
