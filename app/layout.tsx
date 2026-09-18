@@ -5,6 +5,8 @@ import { Toaster } from "sonner";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
 import AiChat from "@/components/AiChat";
+import MagneticCursor from "@/components/MagneticCursor";
+import CommandPalette from "@/components/CommandPalette";
 import { getDoc } from "@/lib/store";
 import { withDefaults, type SiteConfig } from "@/lib/siteConfig";
 
@@ -145,6 +147,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           backgroundSize: "128px 128px",
         }} />
 
+        <MagneticCursor />
+        <CommandPalette />
         <Navbar />
 
         {/* Page content */}

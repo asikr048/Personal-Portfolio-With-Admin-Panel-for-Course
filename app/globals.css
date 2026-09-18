@@ -172,3 +172,19 @@ html { scroll-behavior: smooth; }
   }
   .rise { opacity: 1; }
 }
+
+/* ── Luxury UI & 3D Additions ── */
+@media (pointer: fine) {
+  [data-cursor] {
+    cursor: none;
+  }
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+

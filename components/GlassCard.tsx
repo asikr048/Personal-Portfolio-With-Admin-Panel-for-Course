@@ -26,10 +26,12 @@ interface Props {
   accent?: string;
   /** Optional secondary accent for the bottom bar. Falls back to theme secondary. */
   accent2?: string;
+  dataCursor?: string;
+  onClick?: () => void;
 }
 
 export default function GlassCard({
-  children, className, style, depth = 8, glowBar = true, accent, accent2,
+  children, className, style, depth = 8, glowBar = true, accent, accent2, dataCursor, onClick,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
@@ -51,6 +53,8 @@ export default function GlassCard({
   return (
     <div
       ref={ref}
+      data-cursor={dataCursor}
+      onClick={onClick}
       onMouseMove={handleMove}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setTilt({ x: 0, y: 0 }); setHovered(false); }}
