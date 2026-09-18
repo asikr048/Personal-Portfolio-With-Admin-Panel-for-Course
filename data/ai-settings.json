@@ -1,13 +1,17 @@
 {
   "provider": "gemini",
   "openaiKey": "",
-  "openaiModel": "gpt-4.1-mini",
+  "openaiModel": "gpt-4o-mini",
   "geminiKey": "AIzaSyDmGAAtYYY3gYpFS4fj8gyRnG7x7WTBtDo",
-  "geminiModel": "gemini-2.5-pro",
+  "geminiModel": "gemini-2.0-flash",
   "claudeKey": "",
-  "claudeModel": "claude-haiku-4-5-20251001",
+  "claudeModel": "claude-3-5-haiku-20241022",
   "openrouterKey": "",
-  "openrouterModel": "meta-llama/llama-3.1-8b-instruct:free",
+  "openrouterModel": "deepseek/deepseek-chat",
+  "customName": "DeepSeek / Custom AI",
+  "customBaseUrl": "https://api.deepseek.com/v1",
+  "customKey": "",
+  "customModel": "deepseek-chat",
   "assistantName": "Portfolio Assistant",
   "greeting": "Hi! I'm here to answer any questions about this portfolio. Ask me anything!"
 }

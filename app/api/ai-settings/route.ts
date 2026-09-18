@@ -1,15 +1,23 @@
 import { NextResponse } from "next/server";
-import { getDoc, patchDoc } from "@/lib/store";
+import { getDoc, patchDoc, setDoc } from "@/lib/store";
 import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
 const DEFAULTS = {
   provider: "gemini",
-  openaiKey: "", openaiModel: "gpt-4.1-mini",
-  geminiKey: "", geminiModel: "gemini-2.5-flash",
-  claudeKey: "", claudeModel: "claude-haiku-4-5-20251001",
-  openrouterKey: "", openrouterModel: "meta-llama/llama-3.1-8b-instruct:free",
+  openaiKey: "",
+  openaiModel: "gpt-4o-mini",
+  geminiKey: "",
+  geminiModel: "gemini-2.0-flash",
+  claudeKey: "",
+  claudeModel: "claude-3-5-haiku-20241022",
+  openrouterKey: "",
+  openrouterModel: "deepseek/deepseek-chat",
+  customName: "DeepSeek / Custom AI",
+  customBaseUrl: "https://api.deepseek.com/v1",
+  customKey: "",
+  customModel: "deepseek-chat",
   assistantName: "Portfolio Assistant",
   greeting: "Hi! I'm here to answer any questions about this portfolio. Ask me anything!",
 };
@@ -18,40 +26,83 @@ const DEFAULTS = {
 export async function GET() {
   try {
     const data = await getDoc<Record<string, string>>("ai-settings", DEFAULTS);
-    const { assistantName, greeting, provider,
-      openaiModel, geminiModel, claudeModel, openrouterModel } = data;
-    return NextResponse.json({ assistantName, greeting, provider,
-      openaiModel, geminiModel, claudeModel, openrouterModel });
+    const {
+      assistantName,
+      greeting,
+      provider,
+      openaiModel,
+      geminiModel,
+      claudeModel,
+      openrouterModel,
+      customName,
+      customModel,
+    } = data;
+    return NextResponse.json({
+      assistantName: assistantName || DEFAULTS.assistantName,
+      greeting: greeting || DEFAULTS.greeting,
+      provider: provider || DEFAULTS.provider,
+      openaiModel: openaiModel || DEFAULTS.openaiModel,
+      geminiModel: geminiModel || DEFAULTS.geminiModel,
+      claudeModel: claudeModel || DEFAULTS.claudeModel,
+      openrouterModel: openrouterModel || DEFAULTS.openrouterModel,
+      customName: customName || DEFAULTS.customName,
+      customModel: customModel || DEFAULTS.customModel,
+    });
   } catch {
-    return NextResponse.json({}, { status: 200 });
+    return NextResponse.json(
+      {
+        assistantName: DEFAULTS.assistantName,
+        greeting: DEFAULTS.greeting,
+        provider: DEFAULTS.provider,
+        geminiModel: DEFAULTS.geminiModel,
+      },
+      { status: 200 }
+    );
   }
 }
 
 // Admin-only: full settings including keys.
 export async function POST() {
   const jar = await cookies();
-  if (!jar.get("admin_session")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!jar.get("admin_session")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
-    return NextResponse.json(await getDoc("ai-settings", DEFAULTS));
-  } catch {
+    const data = await getDoc<Record<string, string>>("ai-settings", DEFAULTS);
+    return NextResponse.json({ ...DEFAULTS, ...data });
+  } catch (err) {
+    console.error("Failed to load AI settings:", err);
     return NextResponse.json(DEFAULTS, { status: 200 });
   }
 }
 
 export async function PUT(req: Request) {
   const jar = await cookies();
-  if (!jar.get("admin_session")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!jar.get("admin_session")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     const body = (await req.json()) as Record<string, string>;
-    // Don't let an empty key field wipe a previously saved key.
-    const patch: Record<string, string> = {};
+    const current = await getDoc<Record<string, string>>("ai-settings", DEFAULTS);
+
+    // Merge settings: only preserve existing keys if the incoming value is explicitly undefined/null
+    const merged: Record<string, string> = { ...DEFAULTS, ...current };
     for (const [k, v] of Object.entries(body)) {
-      if (k.endsWith("Key") && (v === "" || v == null)) continue;
-      patch[k] = v;
+      if (v !== undefined) {
+        merged[k] = v;
+      }
     }
-    const updated = await patchDoc<Record<string, string>>("ai-settings", patch);
-    return NextResponse.json({ ok: true, updatedAt: new Date().toISOString(), provider: updated.provider });
-  } catch {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+
+    await setDoc("ai-settings", merged);
+    return NextResponse.json({
+      ok: true,
+      updatedAt: new Date().toISOString(),
+      provider: merged.provider,
+      settings: merged,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to save AI settings";
+    console.error("AI settings save error:", err);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

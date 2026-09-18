@@ -76,6 +76,7 @@ export interface SiteConfig {
   showServices: boolean;
   showTestimonials: boolean;
   showContact: boolean;
+  showBlog?: boolean;
 
   footerText: string;
   updatedAt: string;
@@ -118,9 +119,9 @@ export const DEFAULT_CONFIG: SiteConfig = {
   ctaSecondaryLink: "/contact",
   resumeURL: "",
 
-  github: "",
-  linkedin: "",
-  twitter: "",
+  github: "https://github.com",
+  linkedin: "https://linkedin.com",
+  twitter: "https://twitter.com",
   instagram: "",
   youtube: "",
   dribbble: "",
@@ -145,6 +146,7 @@ export const DEFAULT_CONFIG: SiteConfig = {
   showServices: true,
   showTestimonials: true,
   showContact: true,
+  showBlog: true,
 
   footerText: "",
   updatedAt: "",

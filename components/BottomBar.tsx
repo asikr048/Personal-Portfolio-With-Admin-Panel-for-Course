@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, FolderOpen, Briefcase, User, Mail, Wrench, Quote, Search } from "lucide-react";
+import { Home, FolderOpen, Briefcase, User, Mail, Wrench, Quote, Search, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSiteConfig } from "@/lib/hooks/useSiteConfig";
 import { sound } from "@/lib/sound";
@@ -15,6 +15,7 @@ export default function BottomBar() {
   const links = [
     { href: "/", icon: Home, label: "Home", show: true },
     { href: "/projects", icon: FolderOpen, label: "Projects", show: cfg.showProjects },
+    { href: "/blog", icon: BookOpen, label: "Blog", show: cfg.showBlog ?? true },
     { href: "/career", icon: Briefcase, label: "Career", show: cfg.showCareer },
     { href: "/services", icon: Wrench, label: "Services", show: cfg.showServices },
     { href: "/testimonials", icon: Quote, label: "Quotes", show: cfg.showTestimonials },
@@ -51,7 +52,7 @@ export default function BottomBar() {
         </button>
 
         {links.map(({ href, icon: Icon, label }) => {
-          const active = pathname === href;
+          const active = pathname === href || (href !== "/" && pathname.startsWith(href));
           return (
             <Link
               key={href}

@@ -3,7 +3,7 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search, Home, FolderOpen, Briefcase, Wrench, Quote, User, Mail,
-  Copy, Volume2, VolumeX, Download, Bot, Lock, ArrowRight, CornerDownLeft
+  Copy, Volume2, VolumeX, Download, Bot, Lock, ArrowRight, CornerDownLeft, BookOpen
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
@@ -101,6 +101,14 @@ export default function CommandPalette() {
         icon: FolderOpen,
         shortcut: "P",
         perform: () => router.push("/projects"),
+      },
+      {
+        id: "nav-blog",
+        title: "Blog & Articles",
+        category: "Navigation",
+        icon: BookOpen,
+        shortcut: "B",
+        perform: () => router.push("/blog"),
       },
       {
         id: "nav-career",

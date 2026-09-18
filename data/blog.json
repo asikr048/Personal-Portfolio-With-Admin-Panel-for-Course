@@ -1,0 +1,47 @@
+{
+  "intro": "Thoughts, deep-dives, and tutorials on Web3 engineering, full-stack architecture, and AI-driven development.",
+  "items": [
+    {
+      "id": "post_1",
+      "slug": "building-production-ready-web3-applications",
+      "title": "Architecting Production-Ready Web3 DApps with Next.js & Viem",
+      "excerpt": "A comprehensive engineering guide on building scalable, user-friendly decentralized applications that bridge Web2 UX with Web3 security.",
+      "category": "Web3",
+      "tags": ["Blockchain", "Ethereum", "Next.js", "Solidity"],
+      "coverImage": "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=1200&q=80",
+      "publishedAt": "2026-03-15",
+      "readTime": "6 min read",
+      "featured": true,
+      "published": true,
+      "content": "### Introduction to Modern Web3 Architecture\n\nBuilding decentralized applications (DApps) has matured significantly. Gone are the days when users were expected to tolerate clunky wallet popups, frequent failed transactions, and confusing gas estimation errors.\n\nTo build a Web3 application that users genuinely enjoy, we need to treat user experience with the same rigor as modern Web2 products while maintaining cryptographic security.\n\n```typescript\nimport { createPublicClient, http } from 'viem';\nimport { mainnet } from 'viem/chains';\n\nexport const publicClient = createPublicClient({\n  chain: mainnet,\n  transport: http(),\n});\n```\n\n### 1. Separation of Concerns: Read vs Write States\n\nOne common pitfall is coupling UI state directly to blockchain queries on every render. Instead, follow a layered approach:\n\n- **Indexer Layer**: Use subgraphs or indexed databases for read-heavy lists.\n- **Reactive Cache Layer**: Cache contract state locally to eliminate unnecessary RPC requests.\n- **Optimistic UI**: Update transaction status in memory immediately upon user confirmation.\n\n> Seamless Web3 UX means hiding RPC roundtrip latency behind proactive caching and optimistic updates.\n\n### 2. Handling Network Fallbacks\n\nNever rely on a single public RPC node. Always configure multi-provider fallback chains:\n\n- Primary dedicated node (Alchemy or Infura)\n- Secondary backup endpoint (QuickNode or Lava)\n- Public chain RPC as final safety net\n\n### Conclusion\n\nBy prioritizing responsive design, resilient RPC connectivity, and thoughtful error states, you can build Web3 products that feel just as responsive and polished as the best modern SaaS applications."
+    },
+    {
+      "id": "post_2",
+      "slug": "mastering-modern-cyber-dark-ui-design",
+      "title": "Crafting Immersive Dark Mode Interfaces with CSS HSL & Glassmorphism",
+      "excerpt": "How to combine dynamic HSL color tokens, micro-interactions, and backdrop filters to design high-tech cyber aesthetics.",
+      "category": "Design",
+      "tags": ["UI/UX", "Tailwind CSS", "Framer Motion", "Design System"],
+      "coverImage": "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=1200&q=80",
+      "publishedAt": "2026-02-28",
+      "readTime": "5 min read",
+      "featured": false,
+      "published": true,
+      "content": "### The Power of Dynamic HSL Design Tokens\n\nMany design systems struggle when implementing customizable color palettes because hex codes make programmatic opacity manipulation cumbersome.\n\nBy leveraging CSS custom properties with raw HSL triplets, our entire interface can re-theme instantly with zero layout shifts:\n\n```css\n:root {\n  --p: 185 100% 48%; /* Primary cyan/teal */\n  --p2: 210 100% 40%; /* Secondary blue */\n}\n\n.card-glow {\n  background: hsl(210 60% 8% / 0.7);\n  border: 1px solid hsl(var(--p) / 0.2);\n  box-shadow: 0 10px 40px hsl(var(--p) / 0.1);\n}\n```\n\n### Key Principles for Cyber Dark Interfaces\n\n1. **Avoid Pure Black**: Use rich deep navy (`hsl(210 100% 4%)`) or charcoal tones for backgrounds. It gives depth and preserves contrast without causing eye fatigue.\n2. **Layered Elevation**: Use semi-transparent glass cards with backdrop-blur (`backdrop-filter: blur(24px)`) to create a tangible feeling of physical layers.\n3. **Subtle Sheen Highlights**: Add 1px top borders with higher opacity to simulate directional studio lighting from above.\n\n### Micro-Interactions that Delight\n\nPairing visual feedback with subtle audio clicks elevates a digital portfolio from a static resume into an unforgettable experience."
+    },
+    {
+      "id": "post_3",
+      "slug": "building-autonomous-ai-agents-for-developers",
+      "title": "Integrating AI Agents into Developer Workflows: Practical Patterns",
+      "excerpt": "Exploring multi-agent collaboration, prompt caching, and custom model orchestration to supercharge productivity.",
+      "category": "AI",
+      "tags": ["Artificial Intelligence", "LLM", "Automation", "Agents"],
+      "coverImage": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&q=80",
+      "publishedAt": "2026-01-18",
+      "readTime": "7 min read",
+      "featured": false,
+      "published": true,
+      "content": "### The Shift to Autonomous AI Development\n\nAI is transitioning from simple autocompletion into structured autonomous agents that can plan, execute, inspect, and verify complex engineering tasks.\n\n### Core Ingredients of an Agentic System\n\n1. **Environment Grounding**: Giving the agent direct access to read code, execute terminal commands, and inspect compiler diagnostics.\n2. **Verification Loops**: An agent must always verify its work — running linters, tests, and builds rather than assuming code works.\n3. **Structured Memory**: Retaining context across session boundaries while avoiding context window overflow.\n\n> The real power of AI lies not in writing code faster, but in reducing the cognitive overhead of repetitive verification."
+    }
+  ]
+}

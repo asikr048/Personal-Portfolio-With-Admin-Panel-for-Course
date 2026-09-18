@@ -509,9 +509,10 @@ export default function HomePage() {
                           </h3>
 
                           {p.description && (
-                            <p className="text-white/45 text-xs mt-2 line-clamp-2 leading-relaxed">
-                              {p.description}
-                            </p>
+                            <div
+                              className="text-white/45 text-xs mt-2 line-clamp-2 leading-relaxed project-preview-html"
+                              dangerouslySetInnerHTML={{ __html: p.description }}
+                            />
                           )}
                         </div>
 

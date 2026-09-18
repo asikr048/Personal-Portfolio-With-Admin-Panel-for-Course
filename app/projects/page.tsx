@@ -170,9 +170,10 @@ function ProjectCard({
 
           {/* Description */}
           {p.description && (
-            <p className="text-white/45 text-xs leading-relaxed mt-3.5 line-clamp-2">
-              {p.description}
-            </p>
+            <div
+              className="text-white/45 text-xs leading-relaxed mt-3.5 line-clamp-2 project-preview-html"
+              dangerouslySetInnerHTML={{ __html: p.description }}
+            />
           )}
 
           {/* Stat sub-panels */}
@@ -342,9 +343,10 @@ function ProjectModal({
               {activeTab === "overview" && (
                 <div className="mt-4">
                   {data.p.description && (
-                    <p className="text-white/60 text-sm leading-relaxed">
-                      {data.p.description}
-                    </p>
+                    <div
+                      className="project-html-content text-sm leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: data.p.description }}
+                    />
                   )}
 
                   {/* Stats */}

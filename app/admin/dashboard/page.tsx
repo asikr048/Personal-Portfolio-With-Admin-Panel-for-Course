@@ -3,20 +3,38 @@ import { useState, useEffect, useCallback, useDeferredValue } from "react";
 import { useRouter } from "next/navigation";
 import {
   User, Briefcase, FolderOpen, Code, Lock, LogOut, Save, Plus, Trash2,
-  ChevronRight, Bot, Eye, EyeOff, Palette, Search, Wrench, Quote, Sun, Moon, LayoutGrid, GripVertical, Sparkles,
+  ChevronRight, Bot, Eye, EyeOff, Palette, Search, Wrench, Quote, Sun, Moon,
+  LayoutGrid, GripVertical, Sparkles, BookOpen, Mail, CheckCheck, Reply, Check,
+  ExternalLink, FileText, X, Globe, Settings, Clock, Tag, RefreshCw, Send, AlertCircle
 } from "lucide-react";
 import { Reorder } from "framer-motion";
 import { toast } from "sonner";
 import ImageUpload from "@/components/admin/ImageUpload";
 import { DEFAULT_CONFIG, type SiteConfig } from "@/lib/siteConfig";
 import { HIGHLIGHT_ICON_NAMES, highlightIcon, type HighlightItem } from "@/lib/highlightIcons";
+import type { BlogPost, BlogData } from "@/app/api/blog/route";
+import type { ContactMessage } from "@/app/api/messages/route";
 
-type Tab = "profile" | "home" | "design" | "seo" | "projects" | "career" | "skills" | "highlights" | "services" | "testimonials" | "ai" | "password";
+type Tab =
+  | "profile"
+  | "home"
+  | "design"
+  | "seo"
+  | "projects"
+  | "blog"
+  | "inbox"
+  | "career"
+  | "skills"
+  | "highlights"
+  | "services"
+  | "testimonials"
+  | "ai"
+  | "password";
 
 interface Project {
   id: string; title: string; category: string; description: string;
   tech: string[]; year: string; link: string; imageURL: string; featured: boolean;
-  focus?: string; // objectPosition for the image, e.g. "50% 30%"
+  focus?: string;
 }
 interface CareerItem { id: string; type: string; title: string; org: string; years: string; }
 interface CareerSection { title: string; items: CareerItem[]; }
@@ -26,7 +44,7 @@ interface Testimonial { id: string; name: string; role: string; quote: string; a
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
 
-// ── Shared styles (module-level so input components keep focus across renders) ──
+// ── Shared styles ──
 const inputCls = "w-full px-3.5 py-2.5 rounded-xl text-sm text-white outline-none transition-all";
 const inputStyle: React.CSSProperties = { background: "hsl(210 60% 6%)", border: "1px solid hsl(var(--p) / 0.12)" };
 const btnPrimary: React.CSSProperties = { background: "linear-gradient(135deg,hsl(var(--p)),hsl(var(--p2)))", color: "hsl(210 100% 4%)" };
@@ -49,7 +67,6 @@ const BG_PRESETS = [
   { name: "Light", v: "210 30% 96%" },
 ];
 
-// ── Reusable field components (stable identities) ──
 function TextField({ label, value, onChange, full, type = "text", placeholder }: {
   label: string; value: string; onChange: (v: string) => void; full?: boolean; type?: string; placeholder?: string;
 }) {
@@ -101,53 +118,84 @@ function SaveBtn({ onClick, saving, label }: { onClick: () => void; saving?: boo
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("profile");
-  // Nav highlight uses `tab` (instant); heavy tab content renders from this
-  // deferred value so clicking a tab paints immediately instead of blocking.
-  const deferredTab = useDeferredValue(tab);
+  const [activeTab, setActiveTab] = useState<Tab>("profile");
+  const deferredTab = useDeferredValue(activeTab);
 
   const [config, setConfig] = useState<SiteConfig>(DEFAULT_CONFIG);
   const [savingConfig, setSavingConfig] = useState(false);
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [editProject, setEditProject] = useState<Project | null>(null);
+  const [projectDescTab, setProjectDescTab] = useState<"edit" | "preview">("edit");
+
+  // Blog State
+  const [blogIntro, setBlogIntro] = useState("");
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [editPost, setEditPost] = useState<BlogPost | null>(null);
+  const [postPreviewMode, setPostPreviewMode] = useState<"edit" | "preview">("edit");
+  const [blogFilter, setBlogFilter] = useState("");
+  const [savingBlog, setSavingBlog] = useState(false);
+
+  // Messages Inbox State
+  const [messages, setMessages] = useState<ContactMessage[]>([]);
+  const [messageFilter, setMessageFilter] = useState<"all" | "unread">("all");
 
   const [careerIntro, setCareerIntro] = useState("");
   const [careerSections, setCareerSections] = useState<CareerSection[]>([]);
-
   const [skillGroups, setSkillGroups] = useState<SkillGroup[]>([]);
-
   const [highlightsTitle, setHighlightsTitle] = useState("Beyond Code");
   const [highlightsIntro, setHighlightsIntro] = useState("");
   const [highlightItems, setHighlightItems] = useState<HighlightItem[]>([]);
-
   const [servicesIntro, setServicesIntro] = useState("");
   const [services, setServices] = useState<Service[]>([]);
-
   const [testiIntro, setTestiIntro] = useState("");
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
-
   const [pwForm, setPwForm] = useState({ newPassword: "", confirm: "" });
 
   const [aiSettings, setAiSettings] = useState<Record<string, string>>({
-    provider: "claude", assistantName: "Portfolio Assistant", greeting: "",
-    openaiKey: "", openaiModel: "gpt-4.1-mini",
-    geminiKey: "", geminiModel: "gemini-2.5-flash",
-    claudeKey: "", claudeModel: "claude-haiku-4-5-20251001",
-    openrouterKey: "", openrouterModel: "meta-llama/llama-3.1-8b-instruct:free",
+    provider: "gemini",
+    assistantName: "Portfolio Assistant",
+    greeting: "Hi! I'm here to answer any questions about this portfolio. Ask me anything!",
+    openaiKey: "",
+    openaiModel: "gpt-4o-mini",
+    geminiKey: "",
+    geminiModel: "gemini-2.0-flash",
+    claudeKey: "",
+    claudeModel: "claude-3-5-haiku-20241022",
+    openrouterKey: "",
+    openrouterModel: "deepseek/deepseek-chat",
+    customName: "DeepSeek / Custom AI",
+    customBaseUrl: "https://api.deepseek.com/v1",
+    customKey: "",
+    customModel: "deepseek-chat",
   });
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
   const [aiSaving, setAiSaving] = useState(false);
+  const [aiTesting, setAiTesting] = useState(false);
 
   const setCfg = useCallback(<K extends keyof SiteConfig>(k: K, v: SiteConfig[K]) =>
     setConfig((c) => ({ ...c, [k]: v })), []);
 
   const loadAll = useCallback(async () => {
-    const safe = async (url: string, init?: RequestInit) => { try { const r = await fetch(url, init); return r.ok ? await r.json() : null; } catch { return null; } };
-    const [cfg, pr, ca, sk, hl, sv, ts, ai] = await Promise.all([
-      safe("/api/config"), safe("/api/projects"), safe("/api/career"),
-      safe("/api/skills"), safe("/api/highlights"), safe("/api/services"), safe("/api/testimonials"),
+    const safe = async (url: string, init?: RequestInit) => {
+      try {
+        const r = await fetch(url, { credentials: "include", ...init });
+        return r.ok ? await r.json() : null;
+      } catch {
+        return null;
+      }
+    };
+    const [cfg, pr, ca, sk, hl, sv, ts, ai, bl, ms] = await Promise.all([
+      safe("/api/config"),
+      safe("/api/projects"),
+      safe("/api/career"),
+      safe("/api/skills"),
+      safe("/api/highlights"),
+      safe("/api/services"),
+      safe("/api/testimonials"),
       safe("/api/ai-settings", { method: "POST" }),
+      safe("/api/blog"),
+      safe("/api/messages"),
     ]);
     if (cfg) setConfig({ ...DEFAULT_CONFIG, ...cfg });
     if (pr) setProjects(pr.items ?? []);
@@ -157,6 +205,8 @@ export default function AdminDashboard() {
     if (sv) { setServicesIntro(sv.intro ?? ""); setServices(sv.items ?? []); }
     if (ts) { setTestiIntro(ts.intro ?? ""); setTestimonials(ts.items ?? []); }
     if (ai) setAiSettings((s) => ({ ...s, ...ai }));
+    if (bl) { setBlogIntro(bl.intro ?? ""); setBlogPosts(bl.items ?? []); }
+    if (ms) setMessages(ms.items ?? []);
   }, []);
 
   useEffect(() => { loadAll(); }, [loadAll]);
@@ -166,7 +216,7 @@ export default function AdminDashboard() {
     router.push("/admin/login");
   }
 
-  // ── Savers ──
+  // ── Config saver ──
   async function saveConfig(msg = "Saved!") {
     setSavingConfig(true);
     const r = await fetch("/api/config", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(config) });
@@ -174,6 +224,7 @@ export default function AdminDashboard() {
     r.ok ? toast.success(msg) : toast.error("Failed to save.");
   }
 
+  // ── Projects ──
   function newProject(): Project {
     return { id: uid(), title: "", category: "Web App", description: "", tech: [], year: new Date().getFullYear().toString(), link: "", imageURL: "", featured: false, focus: "50% 50%" };
   }
@@ -182,7 +233,6 @@ export default function AdminDashboard() {
     if (r.ok) { if (!silent) toast.success("Order saved"); return true; }
     toast.error("Failed to save."); return false;
   }
-  /** Persist the current (drag-reordered) order without mutating state. */
   function persistOrder() {
     setProjects((curr) => { void saveProjectsList(curr); return curr; });
   }
@@ -196,6 +246,99 @@ export default function AdminDashboard() {
     if (r.ok) { setProjects(list); toast.success("Deleted."); }
   }
 
+  // ── Blog helpers & savers ──
+  function newBlogPost(): BlogPost {
+    return {
+      id: uid(),
+      slug: "post-" + Date.now().toString(36),
+      title: "",
+      excerpt: "",
+      category: "Tech",
+      tags: [],
+      coverImage: "",
+      publishedAt: new Date().toISOString().split("T")[0],
+      readTime: "5 min read",
+      featured: false,
+      published: true,
+      content: "### Heading\n\nWrite your article here using Markdown...",
+    };
+  }
+
+  async function saveBlogList(list: BlogPost[], introVal = blogIntro, silent = false) {
+    setSavingBlog(true);
+    const r = await fetch("/api/blog", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ intro: introVal, items: list }),
+    });
+    setSavingBlog(false);
+    if (r.ok) {
+      if (!silent) toast.success("Blog updated!");
+      return true;
+    }
+    toast.error("Failed to save blog.");
+    return false;
+  }
+
+  async function savePost(p: BlogPost) {
+    if (!p.title.trim()) return toast.error("Title is required.");
+    if (!p.slug.trim()) return toast.error("Slug is required.");
+
+    const list = editPost && blogPosts.find((x) => x.id === editPost.id)
+      ? blogPosts.map((x) => (x.id === p.id ? p : x))
+      : [p, ...blogPosts];
+
+    if (await saveBlogList(list, blogIntro, true)) {
+      setBlogPosts(list);
+      setEditPost(null);
+      toast.success("Blog post saved!");
+    }
+  }
+
+  async function deletePost(id: string) {
+    if (!confirm("Are you sure you want to delete this blog post?")) return;
+    const list = blogPosts.filter((p) => p.id !== id);
+    if (await saveBlogList(list, blogIntro, true)) {
+      setBlogPosts(list);
+      toast.success("Post deleted.");
+    }
+  }
+
+  // ── Messages Inbox helpers ──
+  async function toggleMessageRead(id: string, currentRead: boolean) {
+    const r = await fetch("/api/messages", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, read: !currentRead }),
+    });
+    if (r.ok) {
+      setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, read: !currentRead } : m)));
+      toast.success(!currentRead ? "Marked as read" : "Marked as unread");
+    }
+  }
+
+  async function markAllMessagesRead() {
+    const r = await fetch("/api/messages", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ markAllRead: true }),
+    });
+    if (r.ok) {
+      setMessages((prev) => prev.map((m) => ({ ...m, read: true })));
+      toast.success("All messages marked as read");
+    }
+  }
+
+  async function deleteMessage(id: string) {
+    if (!confirm("Delete this message?")) return;
+    const r = await fetch(`/api/messages?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    if (r.ok) {
+      setMessages((prev) => prev.filter((m) => m.id !== id));
+      toast.success("Message deleted.");
+    }
+  }
+
+  // ── Other Savers ──
   async function saveCareer() {
     const r = await fetch("/api/career", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ intro: careerIntro, sections: careerSections }) });
     r.ok ? toast.success("Career saved!") : toast.error("Failed.");
@@ -223,19 +366,69 @@ export default function AdminDashboard() {
     const r = await fetch("/api/admin/change-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ newPassword: pwForm.newPassword }) });
     r.ok ? (toast.success("Password updated!"), setPwForm({ newPassword: "", confirm: "" })) : toast.error("Failed.");
   }
+
+  // ── AI Settings Savers & Tester ──
   async function saveAiSettings() {
     setAiSaving(true);
-    const r = await fetch("/api/ai-settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(aiSettings) });
-    setAiSaving(false);
-    r.ok ? toast.success("AI settings saved!") : toast.error("Failed to save.");
+    try {
+      const r = await fetch("/api/ai-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(aiSettings),
+      });
+      const data = await r.json();
+      if (r.ok) {
+        toast.success("AI settings saved successfully!");
+      } else {
+        toast.error(data.error || "Failed to save AI settings.");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save.");
+    } finally {
+      setAiSaving(false);
+    }
   }
 
-  const navItems: { id: Tab; icon: React.ComponentType<{ size?: number }>; label: string }[] = [
+  async function testAiConnection() {
+    setAiTesting(true);
+    try {
+      // Save settings first
+      await fetch("/api/ai-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(aiSettings),
+      });
+
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: "Reply in one sentence: 'AI Connected Successfully!'" }],
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || "Failed to get response from AI");
+      }
+      toast.success(`Connected! Response: "${data.reply}"`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "AI connection test failed.");
+    } finally {
+      setAiTesting(false);
+    }
+  }
+
+  const unreadMessagesCount = messages.filter((m) => !m.read).length;
+
+  const navItems: { id: Tab; icon: React.ComponentType<{ size?: number }>; label: string; badge?: number }[] = [
     { id: "profile", icon: User, label: "Profile" },
     { id: "home", icon: LayoutGrid, label: "Home Hero" },
     { id: "design", icon: Palette, label: "Design" },
     { id: "seo", icon: Search, label: "SEO" },
     { id: "projects", icon: FolderOpen, label: "Projects" },
+    { id: "blog", icon: BookOpen, label: "Blog" },
+    { id: "inbox", icon: Mail, label: "Inbox", badge: unreadMessagesCount },
     { id: "career", icon: Briefcase, label: "Career" },
     { id: "skills", icon: Code, label: "Skills" },
     { id: "highlights", icon: Sparkles, label: "Highlights" },
@@ -258,125 +451,97 @@ export default function AdminDashboard() {
   return (
     <div className="h-screen w-screen flex overflow-hidden"
       style={{ background: "radial-gradient(ellipse at 20% 50%,#041628,#020b14 50%,#020810)" }}>
+      {/* ── Sidebar ── */}
+      <aside className="w-56 shrink-0 flex flex-col justify-between p-4 border-r overflow-y-auto no-scrollbar"
+        style={{ background: "hsl(210 60% 6% / 0.8)", borderColor: "hsl(var(--p) / 0.1)" }}>
+        <div>
+          <div className="flex items-center gap-2.5 px-3 py-2 mb-6">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm font-syne"
+              style={{ background: "linear-gradient(135deg,hsl(var(--p)),hsl(var(--p2)))", color: "hsl(210 100% 4%)" }}>
+              {config.brandName?.slice(0, 1) || "A"}
+            </div>
+            <div>
+              <p className="text-white font-bold text-xs font-syne truncate max-w-[130px]">{config.brandName || "Portfolio"}</p>
+              <p className="text-white/30 text-[10px]">Admin Panel</p>
+            </div>
+          </div>
 
-      {/* Sidebar */}
-      <aside className="w-56 flex flex-col py-6 px-3 shrink-0 overflow-y-auto"
-        style={{ borderRight: "1px solid hsl(var(--p) / 0.08)", background: "hsl(210 60% 5% / 0.5)" }}>
-        <div className="px-3 mb-6">
-          <p className="text-white font-bold text-sm font-syne">Admin</p>
-          <p className="text-white/25 text-xs mt-0.5">{config.brandName || "Portfolio"} Dashboard</p>
+          <nav className="flex flex-col gap-1">
+            {navItems.map(({ id, icon: Icon, label, badge }) => {
+              const active = activeTab === id;
+              return (
+                <button key={id} onClick={() => setActiveTab(id)}
+                  className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium font-syne transition-all cursor-pointer"
+                  style={active ? { background: "hsl(var(--p) / 0.12)", color: "hsl(var(--p))", border: "1px solid hsl(var(--p) / 0.25)" } : { color: "rgba(255,255,255,0.45)" }}>
+                  <div className="flex items-center gap-2.5">
+                    <Icon size={14} />
+                    <span>{label}</span>
+                  </div>
+                  {badge && badge > 0 ? (
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold"
+                      style={{ background: "hsl(var(--p))", color: "hsl(210 100% 4%)" }}>
+                      {badge}
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </nav>
         </div>
-        <nav className="flex flex-col gap-1 flex-1">
-          {navItems.map(({ id, icon: Icon, label }) => (
-            <button key={id} onClick={() => setTab(id)}
-              className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all text-left"
-              style={tab === id
-                ? { background: "hsl(var(--p) / 0.12)", color: "hsl(var(--p))", border: "1px solid hsl(var(--p) / 0.2)" }
-                : { color: "rgba(255,255,255,0.35)", border: "1px solid transparent" }}>
-              <Icon size={15} /> {label}
-              {tab === id && <ChevronRight size={12} className="ml-auto" />}
-            </button>
-          ))}
-        </nav>
-        <a href="/" target="_blank" className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-white/30 hover:text-white/60 transition-all mb-1">
-          <Eye size={14} /> View site
-        </a>
-        <button onClick={logout} className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-all hover:bg-red-500/10" style={{ color: "rgba(255,255,255,0.25)" }}>
-          <LogOut size={15} /> Sign out
-        </button>
+
+        <div className="pt-4 border-t flex flex-col gap-1" style={{ borderColor: "hsl(0 0% 100% / 0.06)" }}>
+          <a href="/" target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-white/40 hover:text-white transition-colors">
+            <ExternalLink size={13} /> View Live Site
+          </a>
+          <button onClick={logout}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-red-400/60 hover:text-red-400 transition-colors">
+            <LogOut size={13} /> Log out
+          </button>
+        </div>
       </aside>
 
-      {/* Main */}
-      <main className="flex-1 overflow-y-auto p-8">
-
+      {/* ── Main Content Area ── */}
+      <main className="flex-1 overflow-y-auto p-8 no-scrollbar">
         {/* ── Profile ── */}
         {deferredTab === "profile" && (
           <div className="max-w-2xl">
-            <h2 className="text-white font-bold text-lg font-syne mb-1">Profile</h2>
-            <p className="text-white/35 text-xs mb-6">Your identity, contact details, and links — shown across the site.</p>
+            <h2 className="text-white font-bold text-lg font-syne mb-1">Personal Profile</h2>
+            <p className="text-white/35 text-xs mb-6">Manage identity, personal contact details, and sidebar information.</p>
 
             <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
-              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-4">Photo</p>
-              <div className="w-full max-w-md">
-                <ImageUpload value={config.photoURL} onChange={(v) => setCfg("photoURL", v)} aspect="square"
-                  focus={config.photoFocus} onFocusChange={(v) => setCfg("photoFocus", v)} />
+              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-4">Identity & Titles</p>
+              <div className="grid grid-cols-2 gap-3">
+                <TextField label="Brand / Logo text" value={config.brandName} onChange={(v) => setCfg("brandName", v)} />
+                <TextField label="Hero name" value={config.heroTitle} onChange={(v) => setCfg("heroTitle", v)} />
+                <TextField label="Hero role / headline" value={config.heroSubtitle} onChange={(v) => setCfg("heroSubtitle", v)} full />
+                <TextArea label="Short bio" value={config.aboutText} onChange={(v) => setCfg("aboutText", v)} rows={3} />
               </div>
             </div>
 
             <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
-              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-4">Identity</p>
-              <div className="grid grid-cols-2 gap-4">
-                <TextField label="Brand / Logo name" value={config.brandName} onChange={(v) => setCfg("brandName", v)} />
-                <TextField label="Hero tagline (eyebrow)" value={config.heroTagline} onChange={(v) => setCfg("heroTagline", v)} />
-                <TextField label="Name" value={config.heroTitle} onChange={(v) => setCfg("heroTitle", v)} />
-                <TextField label="Subtitle / Role" value={config.heroSubtitle} onChange={(v) => setCfg("heroSubtitle", v)} />
-                <TextArea label="About text" value={config.aboutText} onChange={(v) => setCfg("aboutText", v)} />
-              </div>
-            </div>
-
-            <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
-              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-4">Contact</p>
-              <div className="grid grid-cols-2 gap-4">
+              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-4">Photo & Contact Details</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <ImageUpload label="Profile photo" value={config.photoURL} onChange={(v) => setCfg("photoURL", v)}
+                    focus={config.photoFocus} onFocusChange={(v) => setCfg("photoFocus", v)} aspect="square" />
+                </div>
+                <TextField label="Location" value={config.location} onChange={(v) => setCfg("location", v)} />
                 <TextField label="Email" value={config.email} onChange={(v) => setCfg("email", v)} />
                 <TextField label="Phone" value={config.phone} onChange={(v) => setCfg("phone", v)} />
-                <TextField label="Location" value={config.location} onChange={(v) => setCfg("location", v)} />
-                <TextField label="Age" value={config.age} onChange={(v) => setCfg("age", v)} />
+                <TextField label="Resume / CV link" value={config.resumeURL} onChange={(v) => setCfg("resumeURL", v)} />
               </div>
             </div>
 
             <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
-              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-4">Call-to-action buttons</p>
-              <div className="grid grid-cols-2 gap-4">
-                <TextField label="Primary button text" value={config.ctaPrimaryText} onChange={(v) => setCfg("ctaPrimaryText", v)} />
-                <TextField label="Primary button link" value={config.ctaPrimaryLink} onChange={(v) => setCfg("ctaPrimaryLink", v)} />
-                <TextField label="Secondary button text" value={config.ctaSecondaryText} onChange={(v) => setCfg("ctaSecondaryText", v)} />
-                <TextField label="Secondary button link" value={config.ctaSecondaryLink} onChange={(v) => setCfg("ctaSecondaryLink", v)} />
-                <TextField label="Resume / CV URL" value={config.resumeURL} onChange={(v) => setCfg("resumeURL", v)} full />
-              </div>
-            </div>
-
-            <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
-              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-4">Social links</p>
-              <div className="grid grid-cols-2 gap-4">
+              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-4">Social Links</p>
+              <div className="grid grid-cols-2 gap-3">
                 <TextField label="GitHub" value={config.github} onChange={(v) => setCfg("github", v)} />
                 <TextField label="LinkedIn" value={config.linkedin} onChange={(v) => setCfg("linkedin", v)} />
                 <TextField label="Twitter / X" value={config.twitter} onChange={(v) => setCfg("twitter", v)} />
                 <TextField label="Instagram" value={config.instagram} onChange={(v) => setCfg("instagram", v)} />
                 <TextField label="YouTube" value={config.youtube} onChange={(v) => setCfg("youtube", v)} />
                 <TextField label="Dribbble" value={config.dribbble} onChange={(v) => setCfg("dribbble", v)} />
-                <TextField label="Website" value={config.website} onChange={(v) => setCfg("website", v)} full />
-                <TextField label="Footer text" value={config.footerText} onChange={(v) => setCfg("footerText", v)} full placeholder="© 2026 Your Name. All rights reserved." />
-              </div>
-            </div>
-
-            <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
-              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-1">Personal card extras</p>
-              <p className="text-white/25 text-xs mb-4">Shown on the left profile card of the About / Personal page.</p>
-              <div className="grid grid-cols-2 gap-4">
-                {/* Availability */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-white/35 text-xs uppercase tracking-wider font-syne">Availability status text</label>
-                  <input className={inputCls} style={inputStyle} value={config.availabilityStatus ?? "Open to work"}
-                    placeholder="e.g. Open to work" onChange={(e) => setCfg("availabilityStatus", e.target.value)}
-                    onFocus={focusOn} onBlur={focusOff} />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-white/35 text-xs uppercase tracking-wider font-syne">Availability indicator color</label>
-                  <select className={inputCls} style={inputStyle} value={config.availabilityColor ?? "green"}
-                    onChange={(e) => setCfg("availabilityColor", e.target.value)}>
-                    <option value="green">🟢 Green (available)</option>
-                    <option value="amber">🟡 Amber (limited)</option>
-                    <option value="red">🔴 Red (unavailable)</option>
-                  </select>
-                </div>
-                <TextArea label="Currently working on" value={config.currentlyWorkingOn ?? ""} rows={2}
-                  onChange={(v) => setCfg("currentlyWorkingOn", v)} placeholder="e.g. Building a SaaS product for content creators" />
-                <TextField label="Personality traits (comma-separated)" value={config.personalityTags ?? ""}
-                  onChange={(v) => setCfg("personalityTags", v)} full placeholder="Creative, Curious, Detail-oriented" />
-                <TextField label="Interests / Hobbies (comma-separated)" value={config.interests ?? ""}
-                  onChange={(v) => setCfg("interests", v)} full placeholder="Hiking, Photography, Chess" />
-                <TextArea label='Languages (comma-separated, use parens for level)' value={config.languages ?? ""} rows={2}
-                  onChange={(v) => setCfg("languages", v)} placeholder={"English (Native), Bengali (Fluent), Spanish (Basic)"} />
               </div>
             </div>
 
@@ -388,7 +553,7 @@ export default function AdminDashboard() {
         {deferredTab === "home" && (
           <div className="max-w-2xl">
             <h2 className="text-white font-bold text-lg font-syne mb-1">Home Hero</h2>
-            <p className="text-white/35 text-xs mb-6">The big landing section: typing roles, stat counters, and the tech marquee.</p>
+            <p className="text-white/35 text-xs mb-6">The big landing section: typing roles, stat counters, and tech marquee.</p>
 
             <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
               <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-4">Typing roles</p>
@@ -413,7 +578,6 @@ export default function AdminDashboard() {
                 className="flex items-center gap-1.5 px-3 py-2 mt-1 rounded-xl text-xs font-medium" style={{ background: "hsl(var(--p) / 0.08)", color: "hsl(var(--p))", border: "1px solid hsl(var(--p) / 0.15)" }}>
                 <Plus size={12} /> Add stat
               </button>
-              <p className="text-white/25 text-[11px] mt-2">Numbers count up automatically (e.g. &quot;30+&quot;, &quot;100%&quot;, &quot;5&quot;).</p>
             </div>
 
             <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
@@ -423,7 +587,7 @@ export default function AdminDashboard() {
                 onChange={(v) => setCfg("techStack", v)} rows={2} placeholder="React, Next.js, TypeScript, Node.js" />
             </div>
 
-            <SaveBtn onClick={() => saveConfig("Home hero saved! Refresh the site to see it.")} saving={savingConfig} label="Save home hero" />
+            <SaveBtn onClick={() => saveConfig("Home hero saved!")} saving={savingConfig} label="Save home hero" />
           </div>
         )}
 
@@ -431,54 +595,23 @@ export default function AdminDashboard() {
         {deferredTab === "design" && (
           <div className="max-w-2xl">
             <h2 className="text-white font-bold text-lg font-syne mb-1">Design & Theme</h2>
-            <p className="text-white/35 text-xs mb-6">Rebrand the whole site — colors apply across every page after saving + refresh.</p>
+            <p className="text-white/35 text-xs mb-6">Accent colors, background styling, and section toggles.</p>
 
             <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
-              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-4">Mode</p>
-              <div className="flex gap-2">
-                {([["dark", Moon, "Dark"], ["light", Sun, "Light"]] as const).map(([m, Icon, lbl]) => (
-                  <button key={m} onClick={() => setCfg("themeMode", m)}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
-                    style={config.themeMode === m ? { background: "hsl(var(--p) / 0.15)", color: "hsl(var(--p))", border: "1px solid hsl(var(--p) / 0.3)" } : { ...inputStyle, color: "rgba(255,255,255,0.4)" }}>
-                    <Icon size={15} /> {lbl}
-                  </button>
-                ))}
-              </div>
+              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-3">Primary accent color</p>
+              <Swatches value={config.themePrimary} onPick={(v) => setCfg("themePrimary", v)} presets={COLOR_PRESETS} />
             </div>
 
             <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
-              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-4">Primary accent color</p>
-              <Swatches value={config.themePrimary} presets={COLOR_PRESETS} onPick={(v) => setCfg("themePrimary", v)} />
-              <input value={config.themePrimary} onChange={(e) => setCfg("themePrimary", e.target.value)}
-                className={inputCls + " mt-3"} style={inputStyle} placeholder="H S% L%  e.g. 185 100% 48%" onFocus={focusOn} onBlur={focusOff} />
-            </div>
-
-            <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
-              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-4">Secondary color (gradients & orbs)</p>
-              <Swatches value={config.themeSecondary} presets={COLOR_PRESETS} onPick={(v) => setCfg("themeSecondary", v)} />
-              <input value={config.themeSecondary} onChange={(e) => setCfg("themeSecondary", e.target.value)}
-                className={inputCls + " mt-3"} style={inputStyle} placeholder="H S% L%" onFocus={focusOn} onBlur={focusOff} />
-            </div>
-
-            <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
-              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-4">Background base</p>
-              <Swatches value={config.themeBackground} presets={BG_PRESETS} onPick={(v) => setCfg("themeBackground", v)} />
-              <input value={config.themeBackground} onChange={(e) => setCfg("themeBackground", e.target.value)}
-                className={inputCls + " mt-3"} style={inputStyle} placeholder="H S% L%" onFocus={focusOn} onBlur={focusOff} />
-              <div className="mt-4">
-                <ImageUpload label="Ambient background image (optional)" value={config.backgroundImage} onChange={(v) => setCfg("backgroundImage", v)} />
-              </div>
-              <div className="mt-3">
-                <label className="text-white/35 text-xs uppercase tracking-wider font-syne">Background opacity: {config.backgroundOpacity}</label>
-                <input type="range" min={0} max={1} step={0.01} value={Number(config.backgroundOpacity)}
-                  onChange={(e) => setCfg("backgroundOpacity", e.target.value)} className="w-full mt-2 accent-[hsl(var(--p))]" />
-              </div>
+              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-3">Background color</p>
+              <Swatches value={config.themeBackground} onPick={(v) => setCfg("themeBackground", v)} presets={BG_PRESETS} />
             </div>
 
             <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
               <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-4">Visible sections</p>
               <div className="grid grid-cols-2 gap-2">
                 <Toggle label="Projects" checked={config.showProjects} onChange={(v) => setCfg("showProjects", v)} />
+                <Toggle label="Blog" checked={config.showBlog ?? true} onChange={(v) => setCfg("showBlog", v)} />
                 <Toggle label="Career" checked={config.showCareer} onChange={(v) => setCfg("showCareer", v)} />
                 <Toggle label="Skills" checked={config.showSkills} onChange={(v) => setCfg("showSkills", v)} />
                 <Toggle label="Services" checked={config.showServices} onChange={(v) => setCfg("showServices", v)} />
@@ -487,15 +620,15 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <SaveBtn onClick={() => saveConfig("Theme saved! Refresh the site to see it.")} saving={savingConfig} label="Save design" />
+            <SaveBtn onClick={() => saveConfig("Theme saved!")} saving={savingConfig} label="Save theme" />
           </div>
         )}
 
         {/* ── SEO ── */}
         {deferredTab === "seo" && (
           <div className="max-w-2xl">
-            <h2 className="text-white font-bold text-lg font-syne mb-1">SEO & Sharing</h2>
-            <p className="text-white/35 text-xs mb-6">Controls the browser title, search snippets, favicon, and social preview cards.</p>
+            <h2 className="text-white font-bold text-lg font-syne mb-1">SEO & Metadata</h2>
+            <p className="text-white/35 text-xs mb-6">Page title, meta description, favicon, and social share cards.</p>
             <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
               <div className="grid grid-cols-2 gap-4">
                 <TextField label="Page title" value={config.seoTitle} onChange={(v) => setCfg("seoTitle", v)} full />
@@ -530,7 +663,83 @@ export default function AdminDashboard() {
                   <TextField label="Category" value={editProject.category} onChange={(v) => setEditProject((p) => p && { ...p, category: v })} />
                   <TextField label="Year" value={editProject.year} onChange={(v) => setEditProject((p) => p && { ...p, year: v })} />
                   <TextField label="Link" value={editProject.link} onChange={(v) => setEditProject((p) => p && { ...p, link: v })} />
-                  <TextArea label="Description" value={editProject.description} onChange={(v) => setEditProject((p) => p && { ...p, description: v })} />
+                  <div className="col-span-2 flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-white/35 text-xs uppercase tracking-wider font-syne">
+                        Description (HTML Supported)
+                      </label>
+                      <div className="flex rounded-lg p-0.5 bg-white/5 border border-white/10">
+                        <button
+                          type="button"
+                          onClick={() => setProjectDescTab("edit")}
+                          className={`px-2.5 py-0.5 rounded text-[11px] font-syne transition-all ${
+                            projectDescTab === "edit" ? "bg-white/15 text-white font-bold" : "text-white/40 hover:text-white"
+                          }`}
+                        >
+                          Code
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setProjectDescTab("preview")}
+                          className={`px-2.5 py-0.5 rounded text-[11px] font-syne transition-all ${
+                            projectDescTab === "preview" ? "bg-white/15 text-white font-bold" : "text-white/40 hover:text-white"
+                          }`}
+                        >
+                          Live Preview
+                        </button>
+                      </div>
+                    </div>
+
+                    {projectDescTab === "edit" ? (
+                      <>
+                        <div className="flex flex-wrap items-center gap-1.5 py-1">
+                          {[
+                            { label: "<p>", insert: "<p>Text here</p>" },
+                            { label: "<b>", insert: "<strong>Bold text</strong>" },
+                            { label: "<ul>", insert: "<ul>\n  <li>Item 1</li>\n  <li>Item 2</li>\n</ul>" },
+                            { label: "<li>", insert: "<li>New item</li>" },
+                            { label: "<a>", insert: '<a href="https://example.com" target="_blank">Link text</a>' },
+                            { label: "<code>", insert: "<code>code</code>" },
+                            { label: "<br>", insert: "<br/>" },
+                          ].map((t) => (
+                            <button
+                              key={t.label}
+                              type="button"
+                              onClick={() => {
+                                const current = editProject.description || "";
+                                setEditProject((p) => (p ? { ...p, description: current + (current ? "\n" : "") + t.insert } : null));
+                              }}
+                              className="px-2 py-0.5 rounded text-[10px] font-mono bg-white/[0.05] border border-white/[0.1] text-white/70 hover:text-white hover:border-white/30 transition-all"
+                            >
+                              + {t.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        <textarea
+                          rows={4}
+                          value={editProject.description}
+                          onChange={(e) => setEditProject((p) => p && { ...p, description: e.target.value })}
+                          placeholder="<p>Full project description supporting HTML tags like <strong>bold</strong>, <ul><li>lists</li></ul>, etc.</p>"
+                          className={inputCls + " resize-none font-mono text-xs leading-relaxed"}
+                          style={inputStyle}
+                          onFocus={focusOn}
+                          onBlur={focusOff}
+                        />
+                      </>
+                    ) : (
+                      <div
+                        className="w-full p-4 rounded-xl min-h-[110px] project-html-content text-sm overflow-y-auto max-h-[220px]"
+                        style={{ background: "hsl(210 60% 6%)", border: "1px solid hsl(var(--p) / 0.25)" }}
+                        dangerouslySetInnerHTML={{
+                          __html: editProject.description || "<p class='text-white/30 italic text-xs'>No description yet. Switch to Code to add HTML content.</p>",
+                        }}
+                      />
+                    )}
+                    <p className="text-white/30 text-[10px]">
+                      Tip: Use standard HTML tags like &lt;p&gt;, &lt;strong&gt;, &lt;ul&gt;, &lt;li&gt;, &lt;a&gt;, &lt;code&gt; to format case studies.
+                    </p>
+                  </div>
                   <TextField label="Tech (comma-separated)" value={editProject.tech.join(", ")} onChange={(v) => setEditProject((p) => p && { ...p, tech: v.split(",").map((s) => s.trim()).filter(Boolean) })} full />
                   <div className="col-span-2">
                     <ImageUpload label="Project image" value={editProject.imageURL} onChange={(v) => setEditProject((p) => p && { ...p, imageURL: v })}
@@ -570,8 +779,558 @@ export default function AdminDashboard() {
                     </Reorder.Item>
                   ))}
                 </Reorder.Group>
-                {projects.length === 0 && <p className="text-white/25 text-sm text-center py-8">No projects yet.</p>}
               </>
+            )}
+          </div>
+        )}
+
+        {/* ── BLOG TAB (NEW) ── */}
+        {deferredTab === "blog" && (
+          <div className="max-w-4xl">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-white font-bold text-lg font-syne">Blog Articles & Tutorials</h2>
+                <p className="text-white/40 text-xs mt-0.5">Publish articles, dev guides, and thoughts with rich Markdown support.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditPost(newBlogPost())}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold font-syne transition-all hover:scale-105"
+                style={{ background: "hsl(var(--p) / 0.12)", color: "hsl(var(--p))", border: "1px solid hsl(var(--p) / 0.25)" }}
+              >
+                <Plus size={14} /> Write New Article
+              </button>
+            </div>
+
+            {/* Post Editor Drawer/Modal */}
+            {editPost ? (
+              <div className="rounded-2xl p-6 mb-8" style={{ background: "hsl(210 60% 8% / 0.7)", border: "1px solid hsl(var(--p) / 0.25)" }}>
+                <div className="flex items-center justify-between pb-4 mb-5 border-b border-white/10">
+                  <h3 className="text-white font-bold font-syne text-base">
+                    {blogPosts.find((x) => x.id === editPost.id) ? "Edit Article" : "Create New Article"}
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <div className="flex rounded-xl p-1 bg-white/5 border border-white/10">
+                      <button
+                        type="button"
+                        onClick={() => setPostPreviewMode("edit")}
+                        className={`px-3 py-1 rounded-lg text-xs font-syne transition-all ${
+                          postPreviewMode === "edit" ? "bg-white/15 text-white font-bold" : "text-white/40 hover:text-white"
+                        }`}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPostPreviewMode("preview")}
+                        className={`px-3 py-1 rounded-lg text-xs font-syne transition-all ${
+                          postPreviewMode === "preview" ? "bg-white/15 text-white font-bold" : "text-white/40 hover:text-white"
+                        }`}
+                      >
+                        Live Preview
+                      </button>
+                    </div>
+                    <button type="button" onClick={() => setEditPost(null)} className="p-1.5 text-white/40 hover:text-white">
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                {postPreviewMode === "edit" ? (
+                  <div className="flex flex-col gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <TextField
+                        label="Article Title"
+                        value={editPost.title}
+                        onChange={(v) => {
+                          setEditPost((p) => {
+                            if (!p) return null;
+                            const newSlug = p.slug.startsWith("post-")
+                              ? v.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || p.slug
+                              : p.slug;
+                            return { ...p, title: v, slug: newSlug };
+                          });
+                        }}
+                      />
+                      <TextField
+                        label="URL Slug (/blog/slug)"
+                        value={editPost.slug}
+                        onChange={(v) => setEditPost((p) => p && { ...p, slug: v.toLowerCase().replace(/[^a-z0-9_-]/g, "-") })}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-white/35 text-xs uppercase tracking-wider font-syne">Category</label>
+                        <input
+                          value={editPost.category}
+                          onChange={(e) => setEditPost((p) => p && { ...p, category: e.target.value })}
+                          placeholder="e.g. Web3, AI, Design, Tech"
+                          className={inputCls}
+                          style={inputStyle}
+                        />
+                      </div>
+                      <TextField
+                        label="Publish Date (YYYY-MM-DD)"
+                        value={editPost.publishedAt}
+                        onChange={(v) => setEditPost((p) => p && { ...p, publishedAt: v })}
+                      />
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-white/35 text-xs uppercase tracking-wider font-syne">Read Time</label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const words = (editPost.content || "").trim().split(/\s+/).length;
+                              const min = Math.max(1, Math.ceil(words / 200));
+                              setEditPost((p) => p && { ...p, readTime: `${min} min read` });
+                            }}
+                            className="text-[10px] text-cyan-400 hover:underline"
+                          >
+                            ⚡ Auto-calc
+                          </button>
+                        </div>
+                        <input
+                          value={editPost.readTime}
+                          onChange={(e) => setEditPost((p) => p && { ...p, readTime: e.target.value })}
+                          placeholder="e.g. 5 min read"
+                          className={inputCls}
+                          style={inputStyle}
+                        />
+                      </div>
+                    </div>
+
+                    <TextField
+                      label="Tags (comma-separated)"
+                      value={(editPost.tags || []).join(", ")}
+                      onChange={(v) =>
+                        setEditPost((p) => p && { ...p, tags: v.split(",").map((s) => s.trim()).filter(Boolean) })
+                      }
+                      full
+                      placeholder="Next.js, Tailwind, Blockchain, AI"
+                    />
+
+                    <TextArea
+                      label="Summary Excerpt (Shown on cards & previews)"
+                      value={editPost.excerpt}
+                      onChange={(v) => setEditPost((p) => p && { ...p, excerpt: v })}
+                      rows={2}
+                      placeholder="Brief 1-2 sentence overview of the article..."
+                    />
+
+                    <div className="col-span-2">
+                      <ImageUpload
+                        label="Cover Image (Recommended 16:9)"
+                        value={editPost.coverImage}
+                        onChange={(v) => setEditPost((p) => p && { ...p, coverImage: v })}
+                      />
+                    </div>
+
+                    {/* Markdown Formatting Toolbar */}
+                    <div className="flex flex-col gap-1.5 mt-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-white/35 text-xs uppercase tracking-wider font-syne">
+                          Article Content (Markdown)
+                        </label>
+                        <div className="flex items-center gap-1 text-[11px] text-white/50">
+                          <button
+                            type="button"
+                            onClick={() => setEditPost((p) => p && { ...p, content: (p.content || "") + "\n\n## Section Heading\n" })}
+                            className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10"
+                          >
+                            H2
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditPost((p) => p && { ...p, content: (p.content || "") + "\n\n### Sub-heading\n" })}
+                            className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10"
+                          >
+                            H3
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditPost((p) => p && { ...p, content: (p.content || "") + " **bold text** " })}
+                            className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 font-bold"
+                          >
+                            B
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditPost((p) => p && { ...p, content: (p.content || "") + " *italic text* " })}
+                            className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 italic"
+                          >
+                            I
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditPost((p) => p && { ...p, content: (p.content || "") + "\n\n> Important quote or callout\n" })}
+                            className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10"
+                          >
+                            &quot;
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditPost((p) => p && { ...p, content: (p.content || "") + "\n\n```typescript\n// your code here\n```\n" })}
+                            className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 font-mono"
+                          >
+                            &lt;/&gt;
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditPost((p) => p && { ...p, content: (p.content || "") + "\n\n- Key bullet point 1\n- Key bullet point 2\n" })}
+                            className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10"
+                          >
+                            • List
+                          </button>
+                        </div>
+                      </div>
+
+                      <textarea
+                        value={editPost.content}
+                        onChange={(e) => setEditPost((p) => p && { ...p, content: e.target.value })}
+                        rows={14}
+                        placeholder="Write your article content using Markdown..."
+                        className={inputCls + " font-mono text-xs leading-relaxed"}
+                        style={inputStyle}
+                        onFocus={focusOn}
+                        onBlur={focusOff}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                      <Toggle
+                        label="Published"
+                        desc="Live and visible on your public blog"
+                        checked={editPost.published}
+                        onChange={(v) => setEditPost((p) => p && { ...p, published: v })}
+                      />
+                      <Toggle
+                        label="Featured on Top"
+                        desc="Spotlight prominently in hero banner"
+                        checked={editPost.featured}
+                        onChange={(v) => setEditPost((p) => p && { ...p, featured: v })}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  /* Live Preview */
+                  <div className="p-6 rounded-2xl bg-black/40 border border-white/10 max-h-[600px] overflow-y-auto">
+                    {editPost.coverImage && (
+                      <div className="h-56 w-full rounded-xl overflow-hidden mb-6">
+                        <img src={editPost.coverImage} alt={editPost.title} className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 text-xs text-cyan-400 font-syne mb-2">
+                      <span>{editPost.category}</span>
+                      <span>·</span>
+                      <span>{editPost.publishedAt}</span>
+                      <span>·</span>
+                      <span>{editPost.readTime}</span>
+                    </div>
+                    <h1 className="text-2xl font-bold font-syne text-white mb-3">{editPost.title || "Untitled Article"}</h1>
+                    <p className="text-white/60 text-sm italic mb-6 border-l-2 border-cyan-400 pl-3">{editPost.excerpt}</p>
+                    <div className="text-white/80 space-y-3 font-sans text-sm leading-relaxed whitespace-pre-line">
+                      {editPost.content}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3 mt-6 pt-4 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => savePost(editPost)}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold font-syne"
+                    style={btnPrimary}
+                  >
+                    <Save size={13} /> Save Article
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditPost(null)}
+                    className="px-4 py-2 rounded-xl text-xs font-medium text-white/40 hover:text-white/70"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Blog Section Header & Intro Setting */}
+            <div className="rounded-2xl p-5 mb-6" style={cardStyle}>
+              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-3">Blog Header Intro</p>
+              <div className="flex gap-2">
+                <input
+                  value={blogIntro}
+                  onChange={(e) => setBlogIntro(e.target.value)}
+                  placeholder="Intro description shown at top of /blog page..."
+                  className={inputCls}
+                  style={inputStyle}
+                  onFocus={focusOn}
+                  onBlur={focusOff}
+                />
+                <button
+                  type="button"
+                  onClick={() => saveBlogList(blogPosts, blogIntro)}
+                  disabled={savingBlog}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold font-syne whitespace-nowrap"
+                  style={btnPrimary}
+                >
+                  <Save size={12} className="inline mr-1" /> {savingBlog ? "Saving..." : "Save Intro"}
+                </button>
+              </div>
+            </div>
+
+            {/* Articles List */}
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne">
+                Articles ({blogPosts.length})
+              </p>
+              <div className="relative w-64">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                <input
+                  type="text"
+                  value={blogFilter}
+                  onChange={(e) => setBlogFilter(e.target.value)}
+                  placeholder="Search articles..."
+                  className="w-full pl-8 pr-3 py-1.5 rounded-xl text-xs text-white outline-none"
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+
+            {blogPosts.length === 0 ? (
+              <div className="p-8 text-center rounded-2xl" style={cardStyle}>
+                <BookOpen size={28} className="mx-auto text-white/20 mb-2" />
+                <p className="text-white/60 text-sm font-syne">No blog posts yet.</p>
+                <button
+                  type="button"
+                  onClick={() => setEditPost(newBlogPost())}
+                  className="mt-3 px-4 py-2 rounded-xl text-xs font-semibold text-cyan-400 border border-cyan-400/30"
+                >
+                  + Write your first article
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                {blogPosts
+                  .filter((p) => !blogFilter.trim() || p.title.toLowerCase().includes(blogFilter.toLowerCase()))
+                  .map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center justify-between gap-4 p-4 rounded-xl transition-all hover:border-cyan-400/30"
+                      style={cardStyle}
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        {p.coverImage ? (
+                          <img src={p.coverImage} alt={p.title} className="w-14 h-10 object-cover rounded-lg shrink-0" />
+                        ) : (
+                          <div className="w-14 h-10 rounded-lg bg-white/5 flex items-center justify-center text-white/30 shrink-0">
+                            <BookOpen size={16} />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-white text-sm font-semibold font-syne truncate">{p.title || "Untitled"}</p>
+                            {p.featured && (
+                              <span className="px-1.5 py-0.2 rounded text-[10px] bg-cyan-400/20 text-cyan-400 font-bold">
+                                Featured
+                              </span>
+                            )}
+                            <span
+                              className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                p.published ? "bg-green-500/20 text-green-400" : "bg-amber-500/20 text-amber-400"
+                              }`}
+                            >
+                              {p.published ? "Published" : "Draft"}
+                            </span>
+                          </div>
+                          <p className="text-white/40 text-xs mt-0.5">
+                            {p.category} · {p.publishedAt} · {p.readTime} · /blog/{p.slug}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <a
+                          href={`/blog/${p.slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="View on site"
+                          className="p-2 rounded-lg text-white/40 hover:text-white transition-colors"
+                        >
+                          <ExternalLink size={14} />
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditPost(p);
+                            setPostPreviewMode("edit");
+                          }}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                          style={{
+                            background: "hsl(var(--p) / 0.08)",
+                            color: "hsl(var(--p))",
+                            border: "1px solid hsl(var(--p) / 0.15)",
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deletePost(p.id)}
+                          className="p-1.5 rounded-lg text-red-400/60 hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── INBOX TAB (NEW) ── */}
+        {deferredTab === "inbox" && (
+          <div className="max-w-3xl">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-white font-bold text-lg font-syne">Direct Contact Inbox</h2>
+                <p className="text-white/40 text-xs mt-0.5">Messages sent by visitors directly through your website&apos;s contact form.</p>
+              </div>
+              {messages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={markAllMessagesRead}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold font-syne text-white/60 hover:text-white bg-white/5 border border-white/10 transition-all"
+                >
+                  <CheckCheck size={13} /> Mark all read
+                </button>
+              )}
+            </div>
+
+            {/* Filter bar */}
+            <div className="flex items-center gap-2 mb-5">
+              <button
+                type="button"
+                onClick={() => setMessageFilter("all")}
+                className={`px-3 py-1 rounded-xl text-xs font-syne font-medium transition-all ${
+                  messageFilter === "all"
+                    ? "bg-white/15 text-white font-bold border border-white/20"
+                    : "text-white/40 hover:text-white"
+                }`}
+              >
+                All ({messages.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setMessageFilter("unread")}
+                className={`px-3 py-1 rounded-xl text-xs font-syne font-medium transition-all ${
+                  messageFilter === "unread"
+                    ? "bg-cyan-500/20 text-cyan-400 font-bold border border-cyan-500/30"
+                    : "text-white/40 hover:text-white"
+                }`}
+              >
+                Unread ({unreadMessagesCount})
+              </button>
+            </div>
+
+            {/* Messages list */}
+            {messages.length === 0 ? (
+              <div className="p-10 text-center rounded-2xl" style={cardStyle}>
+                <Mail size={32} className="mx-auto text-white/20 mb-3" />
+                <p className="text-white/60 font-semibold font-syne">No messages yet.</p>
+                <p className="text-white/35 text-xs mt-1">When someone submits your contact form, their message will appear here!</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {messages
+                  .filter((m) => messageFilter === "all" || !m.read)
+                  .map((msg) => (
+                    <div
+                      key={msg.id}
+                      className="rounded-2xl p-5 transition-all"
+                      style={{
+                        ...cardStyle,
+                        border: !msg.read ? "1px solid hsl(var(--p) / 0.35)" : cardStyle.border,
+                        background: !msg.read ? "hsl(210 60% 8% / 0.85)" : cardStyle.background,
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <div className="flex items-center gap-2.5">
+                          {!msg.read && (
+                            <span
+                              className="w-2.5 h-2.5 rounded-full shrink-0"
+                              style={{
+                                background: "hsl(var(--p))",
+                                boxShadow: "0 0 10px hsl(var(--p))",
+                              }}
+                            />
+                          )}
+                          <div>
+                            <p className="text-white font-bold text-sm font-syne leading-tight">{msg.name}</p>
+                            <a
+                              href={`mailto:${msg.email}?subject=Re: Your message to Asikur`}
+                              className="text-xs text-cyan-400 hover:underline"
+                            >
+                              {msg.email}
+                            </a>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-xs text-white/40 font-mono">
+                          <Clock size={11} />
+                          <span>
+                            {new Date(msg.createdAt).toLocaleString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Message Content */}
+                      <div className="p-3.5 rounded-xl bg-black/30 border border-white/5 text-white/80 text-xs md:text-sm leading-relaxed whitespace-pre-wrap">
+                        {msg.message}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={`mailto:${msg.email}?subject=Re: Your message to Asikur`}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold font-syne transition-all hover:scale-105"
+                            style={{
+                              background: "hsl(var(--p) / 0.12)",
+                              color: "hsl(var(--p))",
+                              border: "1px solid hsl(var(--p) / 0.25)",
+                            }}
+                          >
+                            <Reply size={12} /> Reply via Email
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => toggleMessageRead(msg.id, msg.read)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs text-white/50 hover:text-white bg-white/5 transition-all"
+                          >
+                            <Check size={12} /> {msg.read ? "Mark as unread" : "Mark as read"}
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => deleteMessage(msg.id)}
+                          className="p-1.5 rounded-lg text-red-400/50 hover:text-red-400 transition-colors"
+                          title="Delete message"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
             )}
           </div>
         )}
@@ -579,34 +1338,42 @@ export default function AdminDashboard() {
         {/* ── Career ── */}
         {deferredTab === "career" && (
           <div className="max-w-2xl">
-            <h2 className="text-white font-bold text-lg font-syne mb-6">Career</h2>
-            <div className="flex flex-col gap-1.5 mb-5">
-              <label className="text-white/35 text-xs uppercase tracking-wider font-syne">Intro text</label>
-              <textarea value={careerIntro} onChange={(e) => setCareerIntro(e.target.value)} rows={2} className={inputCls + " resize-none"} style={inputStyle} onFocus={focusOn} onBlur={focusOff} />
+            <h2 className="text-white font-bold text-lg font-syne mb-1">Career & Experience</h2>
+            <p className="text-white/35 text-xs mb-6">Work experience, education, and milestones.</p>
+            <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
+              <TextArea label="Career page intro" value={careerIntro} onChange={setCareerIntro} rows={2} />
             </div>
-            {careerSections.map((section, si) => (
-              <div key={si} className="mb-5 rounded-xl p-4" style={cardStyle}>
-                <input value={section.title} placeholder="Section title (e.g. Experience)" className={inputCls + " mb-3 font-semibold"} style={inputStyle}
-                  onChange={(e) => { const s = [...careerSections]; s[si] = { ...s[si], title: e.target.value }; setCareerSections(s); }} onFocus={focusOn} onBlur={focusOff} />
-                {section.items.map((item, ii) => (
-                  <div key={item.id} className="flex gap-2 mb-2 items-start">
-                    <div className="grid grid-cols-4 gap-2 flex-1">
-                      {(["type", "title", "org", "years"] as const).map((f) => (
-                        <input key={f} placeholder={f} value={item[f]} className={inputCls} style={inputStyle}
-                          onChange={(e) => { const s = [...careerSections]; s[si] = { ...s[si], items: s[si].items.map((it, j) => (j === ii ? { ...it, [f]: e.target.value } : it)) }; setCareerSections(s); }} onFocus={focusOn} onBlur={focusOff} />
-                      ))}
+            {careerSections.map((sec, si) => (
+              <div key={si} className="rounded-2xl p-5 mb-5" style={cardStyle}>
+                <div className="flex items-center justify-between mb-4">
+                  <input value={sec.title} placeholder="Section title" className={inputCls + " font-syne font-bold max-w-xs"} style={inputStyle}
+                    onChange={(e) => setCareerSections(careerSections.map((s, j) => (j === si ? { ...s, title: e.target.value } : s)))} onFocus={focusOn} onBlur={focusOff} />
+                  <button onClick={() => setCareerSections(careerSections.filter((_, j) => j !== si))} className="text-red-400/60 hover:text-red-400 text-xs font-syne">Remove section</button>
+                </div>
+                {sec.items.map((item, ii) => (
+                  <div key={item.id} className="grid grid-cols-2 gap-2 mb-3 p-3 rounded-xl" style={{ background: "hsl(210 60% 6% / 0.5)", border: "1px solid hsl(0 0% 100% / 0.05)" }}>
+                    <input value={item.title} placeholder="Role / Degree" className={inputCls} style={inputStyle}
+                      onChange={(e) => setCareerSections(careerSections.map((s, j) => (j === si ? { ...s, items: s.items.map((it, k) => (k === ii ? { ...it, title: e.target.value } : it)) } : s)))} onFocus={focusOn} onBlur={focusOff} />
+                    <input value={item.org} placeholder="Company / University" className={inputCls} style={inputStyle}
+                      onChange={(e) => setCareerSections(careerSections.map((s, j) => (j === si ? { ...s, items: s.items.map((it, k) => (k === ii ? { ...it, org: e.target.value } : it)) } : s)))} onFocus={focusOn} onBlur={focusOff} />
+                    <input value={item.years} placeholder="Years (e.g. 2022 - Present)" className={inputCls} style={inputStyle}
+                      onChange={(e) => setCareerSections(careerSections.map((s, j) => (j === si ? { ...s, items: s.items.map((it, k) => (k === ii ? { ...it, years: e.target.value } : it)) } : s)))} onFocus={focusOn} onBlur={focusOff} />
+                    <div className="flex gap-2">
+                      <input value={item.type} placeholder="Type (e.g. Full-time)" className={inputCls} style={inputStyle}
+                        onChange={(e) => setCareerSections(careerSections.map((s, j) => (j === si ? { ...s, items: s.items.map((it, k) => (k === ii ? { ...it, type: e.target.value } : it)) } : s)))} onFocus={focusOn} onBlur={focusOff} />
+                      <button onClick={() => setCareerSections(careerSections.map((s, j) => (j === si ? { ...s, items: s.items.filter((_, k) => k !== ii) } : s)))} className="p-2 text-red-400/50 hover:text-red-400"><Trash2 size={14} /></button>
                     </div>
-                    <button onClick={() => { const s = [...careerSections]; s[si] = { ...s[si], items: s[si].items.filter((_, j) => j !== ii) }; setCareerSections(s); }} className="p-2.5 rounded-lg text-red-400/50 hover:text-red-400"><Trash2 size={13} /></button>
                   </div>
                 ))}
-                <div className="flex justify-between mt-2">
-                  <button onClick={() => { const s = [...careerSections]; s[si].items.push({ id: uid(), type: "", title: "", org: "", years: "" }); setCareerSections(s); }} className="text-xs flex items-center gap-1" style={{ color: "hsl(var(--p))" }}><Plus size={11} /> Add item</button>
-                  <button onClick={() => setCareerSections(careerSections.filter((_, j) => j !== si))} className="text-xs text-red-400/50 hover:text-red-400">Remove section</button>
-                </div>
+                <button onClick={() => setCareerSections(careerSections.map((s, j) => (j === si ? { ...s, items: [...s.items, { id: uid(), type: "", title: "", org: "", years: "" }] } : s)))}
+                  className="flex items-center gap-1 text-xs text-white/50 hover:text-white mt-1 font-syne"><Plus size={12} /> Add item</button>
               </div>
             ))}
             <div className="flex gap-3">
-              <button onClick={() => setCareerSections([...careerSections, { title: "New Section", items: [] }])} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium" style={{ background: "hsl(var(--p) / 0.08)", color: "hsl(var(--p))", border: "1px solid hsl(var(--p) / 0.15)" }}><Plus size={12} /> Add section</button>
+              <button onClick={() => setCareerSections([...careerSections, { title: "New Section", items: [] }])}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold font-syne" style={{ background: "hsl(var(--p) / 0.1)", color: "hsl(var(--p))", border: "1px solid hsl(var(--p) / 0.2)" }}>
+                <Plus size={13} /> Add section
+              </button>
               <SaveBtn onClick={saveCareer} label="Save career" />
             </div>
           </div>
@@ -615,101 +1382,98 @@ export default function AdminDashboard() {
         {/* ── Skills ── */}
         {deferredTab === "skills" && (
           <div className="max-w-2xl">
-            <h2 className="text-white font-bold text-lg font-syne mb-6">Skills</h2>
-            {skillGroups.map((group, gi) => (
-              <div key={gi} className="mb-4 rounded-xl p-4" style={cardStyle}>
-                <div className="flex gap-2 mb-3">
-                  <input value={group.name} placeholder="Group name" className={inputCls + " font-semibold"} style={inputStyle}
-                    onChange={(e) => { const g = [...skillGroups]; g[gi] = { ...g[gi], name: e.target.value }; setSkillGroups(g); }} onFocus={focusOn} onBlur={focusOff} />
-                  <button onClick={() => setSkillGroups(skillGroups.filter((_, j) => j !== gi))} className="p-2.5 rounded-lg text-red-400/50 hover:text-red-400"><Trash2 size={14} /></button>
+            <h2 className="text-white font-bold text-lg font-syne mb-1">Skills</h2>
+            <p className="text-white/35 text-xs mb-6">Group skills by category (e.g. Frontend, Backend, Tools).</p>
+            {skillGroups.map((g, gi) => (
+              <div key={gi} className="rounded-2xl p-5 mb-4" style={cardStyle}>
+                <div className="flex items-center justify-between mb-3">
+                  <input value={g.name} placeholder="Group name" className={inputCls + " font-syne font-bold max-w-xs"} style={inputStyle}
+                    onChange={(e) => setSkillGroups(skillGroups.map((x, j) => (j === gi ? { ...x, name: e.target.value } : x)))} onFocus={focusOn} onBlur={focusOff} />
+                  <button onClick={() => setSkillGroups(skillGroups.filter((_, j) => j !== gi))} className="text-red-400/60 hover:text-red-400 text-xs font-syne">Remove group</button>
                 </div>
-                <input value={group.items.join(", ")} placeholder="Skills (comma-separated)" className={inputCls} style={inputStyle}
-                  onChange={(e) => { const g = [...skillGroups]; g[gi] = { ...g[gi], items: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) }; setSkillGroups(g); }} onFocus={focusOn} onBlur={focusOff} />
+                <TextArea label="Skills (comma-separated)" value={g.items.join(", ")}
+                  onChange={(v) => setSkillGroups(skillGroups.map((x, j) => (j === gi ? { ...x, items: v.split(",").map((s) => s.trim()).filter(Boolean) } : x)))} rows={2} />
               </div>
             ))}
-            <div className="flex gap-3 mt-2">
-              <button onClick={() => setSkillGroups([...skillGroups, { name: "New Group", items: [] }])} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium" style={{ background: "hsl(var(--p) / 0.08)", color: "hsl(var(--p))", border: "1px solid hsl(var(--p) / 0.15)" }}><Plus size={12} /> Add group</button>
+            <div className="flex gap-3">
+              <button onClick={() => setSkillGroups([...skillGroups, { name: "New Group", items: [] }])}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold font-syne" style={{ background: "hsl(var(--p) / 0.1)", color: "hsl(var(--p))", border: "1px solid hsl(var(--p) / 0.2)" }}>
+                <Plus size={13} /> Add group
+              </button>
               <SaveBtn onClick={saveSkills} label="Save skills" />
             </div>
           </div>
         )}
 
-        {/* ── Highlights (Beyond Code) ── */}
+        {/* ── Highlights ── */}
         {deferredTab === "highlights" && (
           <div className="max-w-2xl">
-            <h2 className="text-white font-bold text-lg font-syne mb-1">Beyond Code Highlights</h2>
-            <p className="text-white/35 text-xs mb-6">Editable cards that fill the open space on the About / Personal page. Add interests, values, or fun facts — each with its own icon.</p>
-
+            <h2 className="text-white font-bold text-lg font-syne mb-1">Highlights</h2>
+            <p className="text-white/35 text-xs mb-6">Interactive highlight cards showcased on your personal about page.</p>
             <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
-              <div className="grid grid-cols-2 gap-4">
-                <TextField label="Section title" value={highlightsTitle} onChange={setHighlightsTitle} placeholder="Beyond Code" />
-                <TextField label="Intro (optional)" value={highlightsIntro} onChange={setHighlightsIntro} placeholder="A few things that shape how I think." />
+              <div className="grid grid-cols-2 gap-3">
+                <TextField label="Section title" value={highlightsTitle} onChange={setHighlightsTitle} full />
+                <TextArea label="Intro text" value={highlightsIntro} onChange={setHighlightsIntro} rows={2} />
               </div>
             </div>
-
-            {highlightItems.map((item, i) => (
-              <div key={item.id} className="mb-3 rounded-xl p-4" style={cardStyle}>
-                <div className="flex gap-2 mb-2">
-                  <input value={item.title} placeholder="Title (e.g. Photography)" className={inputCls + " font-semibold"} style={inputStyle}
-                    onChange={(e) => setHighlightItems(highlightItems.map((x, j) => (j === i ? { ...x, title: e.target.value } : x)))} onFocus={focusOn} onBlur={focusOff} />
-                  <button onClick={() => setHighlightItems(highlightItems.filter((_, j) => j !== i))} className="p-2.5 rounded-lg text-red-400/50 hover:text-red-400"><Trash2 size={14} /></button>
+            {highlightItems.map((item, idx) => (
+              <div key={item.id || idx} className="rounded-2xl p-5 mb-4" style={cardStyle}>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-white font-bold text-sm font-syne">Highlight #{idx + 1}</p>
+                  <button onClick={() => setHighlightItems(highlightItems.filter((_, j) => j !== idx))} className="text-red-400/60 hover:text-red-400 text-xs font-syne">Remove</button>
                 </div>
-                <textarea value={item.description} placeholder="Short description" rows={2} className={inputCls + " resize-none mb-3"} style={inputStyle}
-                  onChange={(e) => setHighlightItems(highlightItems.map((x, j) => (j === i ? { ...x, description: e.target.value } : x)))} onFocus={focusOn} onBlur={focusOff} />
-                <p className="text-white/35 text-xs uppercase tracking-wider font-syne mb-2">Icon</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {HIGHLIGHT_ICON_NAMES.map((name) => {
-                    const Icon = highlightIcon(name);
-                    const active = item.icon === name;
-                    return (
-                      <button key={name} type="button" title={name}
-                        onClick={() => setHighlightItems(highlightItems.map((x, j) => (j === i ? { ...x, icon: name } : x)))}
-                        className="w-9 h-9 rounded-lg flex items-center justify-center transition-all hover:scale-110"
-                        style={active
-                          ? { background: "hsl(var(--p) / 0.18)", border: "1px solid hsl(var(--p) / 0.5)", color: "hsl(var(--p))" }
-                          : { background: "hsl(210 60% 7%)", border: "1px solid hsl(var(--p) / 0.08)", color: "rgba(255,255,255,0.35)" }}>
-                        <Icon size={16} />
-                      </button>
-                    );
-                  })}
+                <div className="grid grid-cols-2 gap-3">
+                  <TextField label="Title" value={item.title} onChange={(v) => setHighlightItems(highlightItems.map((x, j) => (j === idx ? { ...x, title: v } : x)))} />
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-white/35 text-xs uppercase tracking-wider font-syne">Icon</label>
+                    <select
+                      value={item.icon || "Sparkles"}
+                      onChange={(e) => setHighlightItems(highlightItems.map((x, j) => (j === idx ? { ...x, icon: e.target.value } : x)))}
+                      className={inputCls}
+                      style={{ ...inputStyle, cursor: "pointer" }}
+                    >
+                      {HIGHLIGHT_ICON_NAMES.map((name) => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <TextArea label="Description" value={item.description} onChange={(v) => setHighlightItems(highlightItems.map((x, j) => (j === idx ? { ...x, description: v } : x)))} rows={2} />
                 </div>
               </div>
             ))}
-
-            <div className="flex gap-3 mt-2">
-              <button onClick={() => setHighlightItems([...highlightItems, { id: uid(), icon: "Sparkles", title: "", description: "" }])}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium" style={{ background: "hsl(var(--p) / 0.08)", color: "hsl(var(--p))", border: "1px solid hsl(var(--p) / 0.15)" }}>
-                <Plus size={12} /> Add highlight
+            <div className="flex gap-3">
+              <button onClick={() => setHighlightItems([...highlightItems, { id: uid(), title: "", description: "", icon: "Sparkles" }])}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold font-syne" style={{ background: "hsl(var(--p) / 0.1)", color: "hsl(var(--p))", border: "1px solid hsl(var(--p) / 0.2)" }}>
+                <Plus size={13} /> Add highlight
               </button>
               <SaveBtn onClick={saveHighlights} label="Save highlights" />
             </div>
-            {highlightItems.length === 0 && <p className="text-white/25 text-sm py-6">No highlights yet — add your first card above.</p>}
           </div>
         )}
 
         {/* ── Services ── */}
         {deferredTab === "services" && (
           <div className="max-w-2xl">
-            <h2 className="text-white font-bold text-lg font-syne mb-6">Services</h2>
-            <div className="flex flex-col gap-1.5 mb-5">
-              <label className="text-white/35 text-xs uppercase tracking-wider font-syne">Intro text</label>
-              <textarea value={servicesIntro} onChange={(e) => setServicesIntro(e.target.value)} rows={2} className={inputCls + " resize-none"} style={inputStyle} onFocus={focusOn} onBlur={focusOff} />
+            <h2 className="text-white font-bold text-lg font-syne mb-1">Services</h2>
+            <p className="text-white/35 text-xs mb-6">Showcase client offerings and freelancing capabilities.</p>
+            <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
+              <TextArea label="Services page intro" value={servicesIntro} onChange={setServicesIntro} rows={2} />
             </div>
-            {services.map((s, i) => (
-              <div key={s.id} className="mb-3 rounded-xl p-4" style={cardStyle}>
-                <div className="flex gap-2 mb-2">
-                  <input value={s.title} placeholder="Service title" className={inputCls + " font-semibold"} style={inputStyle}
-                    onChange={(e) => setServices(services.map((x, j) => (j === i ? { ...x, title: e.target.value } : x)))} onFocus={focusOn} onBlur={focusOff} />
-                  <input value={s.icon} placeholder="Icon (e.g. Code)" className={inputCls + " max-w-[140px]"} style={inputStyle}
-                    onChange={(e) => setServices(services.map((x, j) => (j === i ? { ...x, icon: e.target.value } : x)))} onFocus={focusOn} onBlur={focusOff} />
-                  <button onClick={() => setServices(services.filter((_, j) => j !== i))} className="p-2.5 rounded-lg text-red-400/50 hover:text-red-400"><Trash2 size={14} /></button>
+            {services.map((s, idx) => (
+              <div key={s.id} className="rounded-2xl p-5 mb-4" style={cardStyle}>
+                <div className="flex items-center justify-between mb-3">
+                  <input value={s.title} placeholder="Service title" className={inputCls + " font-syne font-bold max-w-xs"} style={inputStyle}
+                    onChange={(e) => setServices(services.map((x, j) => (j === idx ? { ...x, title: e.target.value } : x)))} onFocus={focusOn} onBlur={focusOff} />
+                  <button onClick={() => setServices(services.filter((_, j) => j !== idx))} className="text-red-400/60 hover:text-red-400 text-xs font-syne">Remove</button>
                 </div>
-                <textarea value={s.description} placeholder="Description" rows={2} className={inputCls + " resize-none"} style={inputStyle}
-                  onChange={(e) => setServices(services.map((x, j) => (j === i ? { ...x, description: e.target.value } : x)))} onFocus={focusOn} onBlur={focusOff} />
+                <TextArea label="Description" value={s.description} onChange={(v) => setServices(services.map((x, j) => (j === idx ? { ...x, description: v } : x)))} rows={2} />
               </div>
             ))}
-            <div className="flex gap-3 mt-2">
-              <button onClick={() => setServices([...services, { id: uid(), title: "", description: "", icon: "Sparkles" }])} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium" style={{ background: "hsl(var(--p) / 0.08)", color: "hsl(var(--p))", border: "1px solid hsl(var(--p) / 0.15)" }}><Plus size={12} /> Add service</button>
+            <div className="flex gap-3">
+              <button onClick={() => setServices([...services, { id: uid(), title: "", description: "", icon: "Wrench" }])}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold font-syne" style={{ background: "hsl(var(--p) / 0.1)", color: "hsl(var(--p))", border: "1px solid hsl(var(--p) / 0.2)" }}>
+                <Plus size={13} /> Add service
+              </button>
               <SaveBtn onClick={saveServices} label="Save services" />
             </div>
           </div>
@@ -718,94 +1482,334 @@ export default function AdminDashboard() {
         {/* ── Testimonials ── */}
         {deferredTab === "testimonials" && (
           <div className="max-w-2xl">
-            <h2 className="text-white font-bold text-lg font-syne mb-6">Testimonials</h2>
-            <div className="flex flex-col gap-1.5 mb-5">
-              <label className="text-white/35 text-xs uppercase tracking-wider font-syne">Intro text</label>
-              <textarea value={testiIntro} onChange={(e) => setTestiIntro(e.target.value)} rows={2} className={inputCls + " resize-none"} style={inputStyle} onFocus={focusOn} onBlur={focusOff} />
+            <h2 className="text-white font-bold text-lg font-syne mb-1">Testimonials</h2>
+            <p className="text-white/35 text-xs mb-6">Client reviews and peer recommendations.</p>
+            <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
+              <TextArea label="Testimonials intro" value={testiIntro} onChange={setTestiIntro} rows={2} />
             </div>
-            {testimonials.map((t, i) => (
-              <div key={t.id} className="mb-3 rounded-xl p-4 flex gap-4" style={cardStyle}>
-                <div className="w-20 shrink-0">
-                  <ImageUpload value={t.avatar} onChange={(v) => setTestimonials(testimonials.map((x, j) => (j === i ? { ...x, avatar: v } : x)))} aspect="square" />
+            {testimonials.map((t, idx) => (
+              <div key={t.id} className="rounded-2xl p-5 mb-4" style={cardStyle}>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-white font-bold text-sm font-syne">Testimonial #{idx + 1}</p>
+                  <button onClick={() => setTestimonials(testimonials.filter((_, j) => j !== idx))} className="text-red-400/60 hover:text-red-400 text-xs font-syne">Remove</button>
                 </div>
-                <div className="flex-1 flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <input value={t.name} placeholder="Name" className={inputCls} style={inputStyle} onChange={(e) => setTestimonials(testimonials.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} onFocus={focusOn} onBlur={focusOff} />
-                    <input value={t.role} placeholder="Role / Company" className={inputCls} style={inputStyle} onChange={(e) => setTestimonials(testimonials.map((x, j) => (j === i ? { ...x, role: e.target.value } : x)))} onFocus={focusOn} onBlur={focusOff} />
-                    <button onClick={() => setTestimonials(testimonials.filter((_, j) => j !== i))} className="p-2.5 rounded-lg text-red-400/50 hover:text-red-400"><Trash2 size={14} /></button>
-                  </div>
-                  <textarea value={t.quote} placeholder="Quote" rows={2} className={inputCls + " resize-none"} style={inputStyle} onChange={(e) => setTestimonials(testimonials.map((x, j) => (j === i ? { ...x, quote: e.target.value } : x)))} onFocus={focusOn} onBlur={focusOff} />
+                <div className="grid grid-cols-2 gap-3">
+                  <TextField label="Name" value={t.name} onChange={(v) => setTestimonials(testimonials.map((x, j) => (j === idx ? { ...x, name: v } : x)))} />
+                  <TextField label="Role / Company" value={t.role} onChange={(v) => setTestimonials(testimonials.map((x, j) => (j === idx ? { ...x, role: v } : x)))} />
+                  <TextArea label="Quote / Feedback" value={t.quote} onChange={(v) => setTestimonials(testimonials.map((x, j) => (j === idx ? { ...x, quote: v } : x)))} rows={3} />
                 </div>
               </div>
             ))}
-            <div className="flex gap-3 mt-2">
-              <button onClick={() => setTestimonials([...testimonials, { id: uid(), name: "", role: "", quote: "", avatar: "" }])} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium" style={{ background: "hsl(var(--p) / 0.08)", color: "hsl(var(--p))", border: "1px solid hsl(var(--p) / 0.15)" }}><Plus size={12} /> Add testimonial</button>
+            <div className="flex gap-3">
+              <button onClick={() => setTestimonials([...testimonials, { id: uid(), name: "", role: "", quote: "", avatar: "" }])}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold font-syne" style={{ background: "hsl(var(--p) / 0.1)", color: "hsl(var(--p))", border: "1px solid hsl(var(--p) / 0.2)" }}>
+                <Plus size={13} /> Add testimonial
+              </button>
               <SaveBtn onClick={saveTestimonials} label="Save testimonials" />
             </div>
           </div>
         )}
 
-        {/* ── AI Settings ── */}
+        {/* ── AI SETTINGS TAB (UPGRADED WITH CUSTOM AI & LATEST MODELS) ── */}
         {deferredTab === "ai" && (
           <div className="max-w-2xl">
-            <h2 className="text-white font-bold text-lg font-syne mb-1">AI Settings</h2>
-            <p className="text-white/35 text-xs mb-6">Configure the AI assistant that powers the &quot;Ask AI&quot; chat on your portfolio.</p>
+            <h2 className="text-white font-bold text-lg font-syne mb-1">AI Settings & Integrations</h2>
+            <p className="text-white/35 text-xs mb-6">
+              Configure the AI assistant for your portfolio. Choose from leading cloud models or connect any Custom AI API.
+            </p>
 
+            {/* Provider Selector (5 options including Custom AI) */}
             <div className="mb-6">
               <p className="text-white/35 text-xs uppercase tracking-wider font-syne mb-3">AI Provider</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
                 {[
+                  { id: "gemini", label: "Gemini", emoji: "✦", color: "hsl(200,100%,50%)" },
                   { id: "openai", label: "ChatGPT", emoji: "🤖", color: "hsl(142,70%,45%)" },
-                  { id: "gemini", label: "Gemini", emoji: "✦", color: "hsl(220,90%,60%)" },
                   { id: "claude", label: "Claude", emoji: "🔶", color: "hsl(30,90%,55%)" },
                   { id: "openrouter", label: "OpenRouter", emoji: "🌐", color: "hsl(280,70%,60%)" },
+                  { id: "custom", label: "Custom AI", emoji: "⚙️", color: "hsl(330,85%,60%)" },
                 ].map((p) => (
-                  <button key={p.id} onClick={() => setAiSettings((s) => ({ ...s, provider: p.id }))}
-                    className="flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold font-syne transition-all hover:scale-105"
-                    style={aiSettings.provider === p.id ? { background: `${p.color}22`, border: `1px solid ${p.color}55`, color: p.color } : { background: "hsl(210 60% 7%)", border: "1px solid hsl(var(--p) / 0.08)", color: "rgba(255,255,255,0.3)" }}>
-                    <span className="text-lg">{p.emoji}</span>{p.label}
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setAiSettings((s) => ({ ...s, provider: p.id }))}
+                    className="flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold font-syne transition-all hover:scale-105 cursor-pointer"
+                    style={
+                      aiSettings.provider === p.id
+                        ? { background: `${p.color}22`, border: `1px solid ${p.color}55`, color: p.color }
+                        : { background: "hsl(210 60% 7%)", border: "1px solid hsl(var(--p) / 0.08)", color: "rgba(255,255,255,0.4)" }
+                    }
+                  >
+                    <span className="text-lg">{p.emoji}</span>
+                    {p.label}
                   </button>
                 ))}
               </div>
             </div>
 
+            {/* Provider Details Card */}
             <div className="rounded-xl p-5 mb-5" style={cardStyle}>
-              {aiSettings.provider === "openai" && (
-                <ProviderKey label="ChatGPT / OpenAI" keyField="openaiKey" placeholder="sk-..." link="https://platform.openai.com/api-keys" linkText="platform.openai.com" aiSettings={aiSettings} setAiSettings={setAiSettings} showKeys={showKeys} setShowKeys={setShowKeys}>
-                  <select value={aiSettings.openaiModel} onChange={(e) => setAiSettings((s) => ({ ...s, openaiModel: e.target.value }))} className={inputCls} style={{ ...inputStyle, cursor: "pointer" }}>
-                    <option value="gpt-4.1-mini">gpt-4.1-mini — fast ⭐</option><option value="gpt-4.1-nano">gpt-4.1-nano — cheapest</option><option value="gpt-4.1">gpt-4.1 — best</option><option value="gpt-4o">gpt-4o</option><option value="gpt-4o-mini">gpt-4o-mini</option><option value="o4-mini">o4-mini</option>
-                  </select>
-                </ProviderKey>
-              )}
+              {/* Google Gemini */}
               {aiSettings.provider === "gemini" && (
-                <ProviderKey label="Google Gemini" keyField="geminiKey" placeholder="AIza..." link="https://aistudio.google.com/app/apikey" linkText="Google AI Studio" aiSettings={aiSettings} setAiSettings={setAiSettings} showKeys={showKeys} setShowKeys={setShowKeys}>
-                  <select value={aiSettings.geminiModel} onChange={(e) => setAiSettings((s) => ({ ...s, geminiModel: e.target.value }))} className={inputCls} style={{ ...inputStyle, cursor: "pointer" }}>
-                    <option value="gemini-2.5-flash">gemini-2.5-flash ⭐</option><option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option><option value="gemini-2.5-pro">gemini-2.5-pro</option><option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                <ProviderKey
+                  label="Google Gemini (Recommended)"
+                  keyField="geminiKey"
+                  placeholder="AIzaSy..."
+                  link="https://aistudio.google.com/app/apikey"
+                  linkText="Google AI Studio"
+                  aiSettings={aiSettings}
+                  setAiSettings={setAiSettings}
+                  showKeys={showKeys}
+                  setShowKeys={setShowKeys}
+                >
+                  <select
+                    value={aiSettings.geminiModel || "gemini-2.0-flash"}
+                    onChange={(e) => setAiSettings((s) => ({ ...s, geminiModel: e.target.value }))}
+                    className={inputCls}
+                    style={{ ...inputStyle, cursor: "pointer" }}
+                  >
+                    <option value="gemini-2.0-flash">gemini-2.0-flash (Fast, Multimodal — Recommended ⭐)</option>
+                    <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite (Ultra Lightweight)</option>
+                    <option value="gemini-1.5-flash">gemini-1.5-flash (Balanced)</option>
+                    <option value="gemini-1.5-pro">gemini-1.5-pro (Complex Reasoning & 2M Context)</option>
                   </select>
+                  <div className="mt-2">
+                    <label className="text-white/30 text-[11px] block mb-1">Or enter custom Gemini model ID:</label>
+                    <input
+                      value={aiSettings.geminiModel || ""}
+                      onChange={(e) => setAiSettings((s) => ({ ...s, geminiModel: e.target.value }))}
+                      placeholder="e.g. gemini-2.0-flash"
+                      className={inputCls}
+                      style={inputStyle}
+                    />
+                  </div>
                 </ProviderKey>
               )}
+
+              {/* OpenAI */}
+              {aiSettings.provider === "openai" && (
+                <ProviderKey
+                  label="OpenAI / ChatGPT"
+                  keyField="openaiKey"
+                  placeholder="sk-proj-..."
+                  link="https://platform.openai.com/api-keys"
+                  linkText="OpenAI Platform"
+                  aiSettings={aiSettings}
+                  setAiSettings={setAiSettings}
+                  showKeys={showKeys}
+                  setShowKeys={setShowKeys}
+                >
+                  <select
+                    value={aiSettings.openaiModel || "gpt-4o-mini"}
+                    onChange={(e) => setAiSettings((s) => ({ ...s, openaiModel: e.target.value }))}
+                    className={inputCls}
+                    style={{ ...inputStyle, cursor: "pointer" }}
+                  >
+                    <option value="gpt-4o-mini">gpt-4o-mini (Fast & Low Cost — Recommended ⭐)</option>
+                    <option value="gpt-4o">gpt-4o (Flagship Omni Model)</option>
+                    <option value="o3-mini">o3-mini (High-Speed Reasoning)</option>
+                    <option value="o1">o1 (Advanced Deep Reasoning)</option>
+                    <option value="gpt-4-turbo">gpt-4-turbo</option>
+                  </select>
+                  <div className="mt-2">
+                    <label className="text-white/30 text-[11px] block mb-1">Or enter custom OpenAI model ID:</label>
+                    <input
+                      value={aiSettings.openaiModel || ""}
+                      onChange={(e) => setAiSettings((s) => ({ ...s, openaiModel: e.target.value }))}
+                      placeholder="e.g. gpt-4o-mini"
+                      className={inputCls}
+                      style={inputStyle}
+                    />
+                  </div>
+                </ProviderKey>
+              )}
+
+              {/* Anthropic Claude */}
               {aiSettings.provider === "claude" && (
-                <ProviderKey label="Anthropic Claude" keyField="claudeKey" placeholder="sk-ant-..." link="https://console.anthropic.com/account/keys" linkText="Anthropic Console" aiSettings={aiSettings} setAiSettings={setAiSettings} showKeys={showKeys} setShowKeys={setShowKeys}>
-                  <select value={aiSettings.claudeModel} onChange={(e) => setAiSettings((s) => ({ ...s, claudeModel: e.target.value }))} className={inputCls} style={{ ...inputStyle, cursor: "pointer" }}>
-                    <option value="claude-haiku-4-5-20251001">claude-haiku-4-5 ⭐</option><option value="claude-sonnet-4-6">claude-sonnet-4-6</option><option value="claude-opus-4-6">claude-opus-4-6</option><option value="claude-3-5-sonnet-20241022">claude-3-5-sonnet</option>
+                <ProviderKey
+                  label="Anthropic Claude"
+                  keyField="claudeKey"
+                  placeholder="sk-ant-..."
+                  link="https://console.anthropic.com/account/keys"
+                  linkText="Anthropic Console"
+                  aiSettings={aiSettings}
+                  setAiSettings={setAiSettings}
+                  showKeys={showKeys}
+                  setShowKeys={setShowKeys}
+                >
+                  <select
+                    value={aiSettings.claudeModel || "claude-3-5-haiku-20241022"}
+                    onChange={(e) => setAiSettings((s) => ({ ...s, claudeModel: e.target.value }))}
+                    className={inputCls}
+                    style={{ ...inputStyle, cursor: "pointer" }}
+                  >
+                    <option value="claude-3-5-haiku-20241022">claude-3-5-haiku-20241022 (Fast & Cost Efficient ⭐)</option>
+                    <option value="claude-3-7-sonnet-20250219">claude-3-7-sonnet-20250219 (Latest 3.7 Hybrid Reasoning)</option>
+                    <option value="claude-3-5-sonnet-20241022">claude-3-5-sonnet-20241022 (Industry Leading)</option>
+                    <option value="claude-3-opus-20240229">claude-3-opus-20240229 (Deep Analysis)</option>
                   </select>
+                  <div className="mt-2">
+                    <label className="text-white/30 text-[11px] block mb-1">Or enter custom Claude model ID:</label>
+                    <input
+                      value={aiSettings.claudeModel || ""}
+                      onChange={(e) => setAiSettings((s) => ({ ...s, claudeModel: e.target.value }))}
+                      placeholder="e.g. claude-3-7-sonnet-20250219"
+                      className={inputCls}
+                      style={inputStyle}
+                    />
+                  </div>
                 </ProviderKey>
               )}
+
+              {/* OpenRouter */}
               {aiSettings.provider === "openrouter" && (
-                <ProviderKey label="OpenRouter (100+ models)" keyField="openrouterKey" placeholder="sk-or-..." link="https://openrouter.ai/keys" linkText="openrouter.ai" aiSettings={aiSettings} setAiSettings={setAiSettings} showKeys={showKeys} setShowKeys={setShowKeys}>
-                  <input value={aiSettings.openrouterModel} onChange={(e) => setAiSettings((s) => ({ ...s, openrouterModel: e.target.value }))} placeholder="meta-llama/llama-3.1-8b-instruct:free" className={inputCls} style={inputStyle} onFocus={focusOn} onBlur={focusOff} />
+                <ProviderKey
+                  label="OpenRouter (Access 100+ Models)"
+                  keyField="openrouterKey"
+                  placeholder="sk-or-..."
+                  link="https://openrouter.ai/keys"
+                  linkText="openrouter.ai"
+                  aiSettings={aiSettings}
+                  setAiSettings={setAiSettings}
+                  showKeys={showKeys}
+                  setShowKeys={setShowKeys}
+                >
+                  <input
+                    value={aiSettings.openrouterModel || "deepseek/deepseek-chat"}
+                    onChange={(e) => setAiSettings((s) => ({ ...s, openrouterModel: e.target.value }))}
+                    placeholder="e.g. deepseek/deepseek-chat or google/gemini-2.0-flash-001"
+                    className={inputCls}
+                    style={inputStyle}
+                    onFocus={focusOn}
+                    onBlur={focusOff}
+                  />
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {[
+                      "deepseek/deepseek-chat",
+                      "deepseek/deepseek-r1",
+                      "google/gemini-2.0-flash-001",
+                      "meta-llama/llama-3.3-70b-instruct",
+                    ].map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setAiSettings((s) => ({ ...s, openrouterModel: m }))}
+                        className="px-2 py-0.5 rounded text-[10px] bg-white/5 hover:bg-white/10 text-white/60 font-mono"
+                      >
+                        {m.split("/")[1]}
+                      </button>
+                    ))}
+                  </div>
                 </ProviderKey>
+              )}
+
+              {/* Custom AI Provider (OpenAI Compatible: DeepSeek, Groq, Ollama, etc.) */}
+              {aiSettings.provider === "custom" && (
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne">
+                      Custom AI Integration (OpenAI-Compatible)
+                    </p>
+                    <span className="text-[11px] text-pink-400 font-mono">Compatible with DeepSeek, Groq, Ollama, vLLM</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <TextField
+                      label="Provider Name"
+                      value={aiSettings.customName || ""}
+                      onChange={(v) => setAiSettings((s) => ({ ...s, customName: v }))}
+                      placeholder="e.g. DeepSeek, Groq, Local Ollama"
+                    />
+                    <TextField
+                      label="API Base URL"
+                      value={aiSettings.customBaseUrl || ""}
+                      onChange={(v) => setAiSettings((s) => ({ ...s, customBaseUrl: v }))}
+                      placeholder="https://api.deepseek.com/v1"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-white/35 text-xs uppercase tracking-wider font-syne">
+                      API Key (Optional for local Ollama)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showKeys["custom"] ? "text" : "password"}
+                        value={aiSettings.customKey || ""}
+                        placeholder="sk-... or leave blank for local models"
+                        onChange={(e) => setAiSettings((s) => ({ ...s, customKey: e.target.value }))}
+                        className={inputCls + " pr-10"}
+                        style={inputStyle}
+                        onFocus={focusOn}
+                        onBlur={focusOff}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowKeys((kk) => ({ ...kk, custom: !kk["custom"] }))}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
+                      >
+                        {showKeys["custom"] ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <TextField
+                    label="Model Name"
+                    value={aiSettings.customModel || ""}
+                    onChange={(v) => setAiSettings((s) => ({ ...s, customModel: v }))}
+                    placeholder="e.g. deepseek-chat, llama-3.3-70b-versatile, mistral"
+                    full
+                  />
+
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/5 text-[11px] text-white/50 space-y-1">
+                    <p>💡 <strong>Quick setups:</strong></p>
+                    <p>• <strong>DeepSeek:</strong> URL: <code>https://api.deepseek.com/v1</code>, Model: <code>deepseek-chat</code></p>
+                    <p>• <strong>Groq:</strong> URL: <code>https://api.groq.com/openai/v1</code>, Model: <code>llama-3.3-70b-versatile</code></p>
+                    <p>• <strong>Local Ollama:</strong> URL: <code>http://localhost:11434/v1</code>, Model: <code>llama3.2</code> (Key: optional)</p>
+                  </div>
+                </div>
               )}
             </div>
 
+            {/* Assistant Personality Card */}
             <div className="rounded-xl p-5 mb-5" style={cardStyle}>
-              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-4">Assistant Personality</p>
+              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-4">
+                Assistant Personality
+              </p>
               <div className="grid grid-cols-2 gap-3">
-                <TextField label="Assistant Name" value={aiSettings.assistantName} onChange={(v) => setAiSettings((s) => ({ ...s, assistantName: v }))} full />
-                <TextArea label="Greeting Message" value={aiSettings.greeting} onChange={(v) => setAiSettings((s) => ({ ...s, greeting: v }))} rows={2} />
+                <TextField
+                  label="Assistant Name"
+                  value={aiSettings.assistantName}
+                  onChange={(v) => setAiSettings((s) => ({ ...s, assistantName: v }))}
+                  full
+                />
+                <TextArea
+                  label="Greeting Message"
+                  value={aiSettings.greeting}
+                  onChange={(v) => setAiSettings((s) => ({ ...s, greeting: v }))}
+                  rows={2}
+                />
               </div>
             </div>
-            <SaveBtn onClick={saveAiSettings} saving={aiSaving} label="Save AI settings" />
+
+            {/* Save & Test Buttons */}
+            <div className="flex items-center gap-3">
+              <SaveBtn onClick={saveAiSettings} saving={aiSaving} label="Save AI settings" />
+              <button
+                type="button"
+                onClick={testAiConnection}
+                disabled={aiTesting}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold font-syne transition-all hover:scale-[1.02] disabled:opacity-60 cursor-pointer"
+                style={{
+                  background: "hsl(var(--p) / 0.12)",
+                  color: "hsl(var(--p))",
+                  border: "1px solid hsl(var(--p) / 0.25)",
+                }}
+              >
+                <Sparkles size={14} className={aiTesting ? "animate-spin" : ""} />
+                {aiTesting ? "Testing AI connection..." : "Test AI Connection"}
+              </button>
+            </div>
           </div>
         )}
 
@@ -829,7 +1833,7 @@ export default function AdminDashboard() {
   );
 }
 
-// ── AI provider key block (module-level to preserve focus) ──
+// ── AI provider key block ──
 function ProviderKey({ label, keyField, placeholder, link, linkText, aiSettings, setAiSettings, showKeys, setShowKeys, children }: {
   label: string; keyField: string; placeholder: string; link: string; linkText: string;
   aiSettings: Record<string, string>; setAiSettings: React.Dispatch<React.SetStateAction<Record<string, string>>>;
