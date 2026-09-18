@@ -92,6 +92,167 @@ function TextArea({ label, value, onChange, rows = 3, placeholder }: {
     </div>
   );
 }
+
+function CommaSeparatedInput({
+  label,
+  values,
+  onChange,
+  placeholder,
+  full,
+  rows = 2,
+  multiline = false,
+  helperText,
+}: {
+  label: string;
+  values: string[] | string;
+  onChange: (items: string[], raw: string) => void;
+  placeholder?: string;
+  full?: boolean;
+  rows?: number;
+  multiline?: boolean;
+  helperText?: string;
+}) {
+  const getArray = useCallback((v: string[] | string) => {
+    if (Array.isArray(v)) return v;
+    return (v || "")
+      .split(/[\n,]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }, []);
+
+  const getText = useCallback((v: string[] | string) => {
+    if (Array.isArray(v)) return v.join(", ");
+    return v || "";
+  }, []);
+
+  const [localText, setLocalText] = useState(() => getText(values));
+  const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    if (!isFocused) {
+      setLocalText(getText(values));
+    }
+  }, [values, isFocused, getText]);
+
+  function handleChange(val: string) {
+    setLocalText(val);
+    const items = val
+      .split(/[\n,]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    onChange(items, val);
+  }
+
+  function handleBlur() {
+    setIsFocused(false);
+    focusOff();
+    const items = localText
+      .split(/[\n,]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const cleaned = items.join(", ");
+    setLocalText(cleaned);
+    onChange(items, cleaned);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    if (e.key === "Enter") {
+      if (!multiline || (!e.shiftKey && !e.ctrlKey)) {
+        e.preventDefault();
+        const trimmed = localText.trim();
+        if (trimmed && !trimmed.endsWith(",")) {
+          const next = trimmed + ", ";
+          setLocalText(next);
+          const items = next
+            .split(/[\n,]/)
+            .map((s) => s.trim())
+            .filter(Boolean);
+          onChange(items, next);
+        }
+      }
+    }
+  }
+
+  function removeTag(indexToRemove: number) {
+    const current = getArray(values);
+    const next = current.filter((_, idx) => idx !== indexToRemove);
+    const formatted = next.join(", ");
+    setLocalText(formatted);
+    onChange(next, formatted);
+  }
+
+  const currentItems = getArray(values);
+
+  return (
+    <div className={`flex flex-col gap-1.5 ${full ? "col-span-2" : ""}`}>
+      <div className="flex items-center justify-between">
+        <label className="text-white/35 text-xs uppercase tracking-wider font-syne">{label}</label>
+        {currentItems.length > 0 && (
+          <span className="text-[11px] font-mono text-cyan-400/80">
+            {currentItems.length} {currentItems.length === 1 ? "tag" : "tags"}
+          </span>
+        )}
+      </div>
+
+      {multiline ? (
+        <textarea
+          rows={rows}
+          value={localText}
+          placeholder={placeholder}
+          onChange={(e) => handleChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onFocus={() => {
+            setIsFocused(true);
+            focusOn();
+          }}
+          onBlur={handleBlur}
+          className={inputCls + " resize-none"}
+          style={inputStyle}
+        />
+      ) : (
+        <input
+          type="text"
+          value={localText}
+          placeholder={placeholder}
+          onChange={(e) => handleChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onFocus={() => {
+            setIsFocused(true);
+            focusOn();
+          }}
+          onBlur={handleBlur}
+          className={inputCls}
+          style={inputStyle}
+        />
+      )}
+
+      {/* Visual Live Badges */}
+      {currentItems.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-1">
+          {currentItems.map((item, idx) => (
+            <span
+              key={`${item}-${idx}`}
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-mono bg-cyan-400/10 text-cyan-300 border border-cyan-400/25 group hover:border-cyan-400/50 transition-colors"
+            >
+              <span>{item}</span>
+              <button
+                type="button"
+                onClick={() => removeTag(idx)}
+                className="hover:text-red-400 text-cyan-300/50 hover:bg-white/10 rounded p-0.5 transition-colors ml-0.5"
+                title={`Remove ${item}`}
+              >
+                <X size={11} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {helperText && <p className="text-white/30 text-[11px] mt-0.5">{helperText}</p>}
+    </div>
+  );
+}
+
 function Toggle({ label, desc, checked, onChange }: { label: string; desc?: string; checked: boolean; onChange: (v: boolean) => void; }) {
   return (
     <button type="button" onClick={() => onChange(!checked)}
@@ -546,6 +707,38 @@ export default function AdminDashboard() {
               </div>
             </div>
 
+            <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
+              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-4">Personal Page Details</p>
+              <div className="grid grid-cols-2 gap-3">
+                <TextField label="Availability status" value={config.availabilityStatus || ""} onChange={(v) => setCfg("availabilityStatus", v)} placeholder="e.g. Open to work" />
+                <TextField label="Currently working on" value={config.currentlyWorkingOn || ""} onChange={(v) => setCfg("currentlyWorkingOn", v)} placeholder="e.g. Embedded AI & Linux Systems" />
+                <CommaSeparatedInput
+                  label="Interests (comma-separated)"
+                  values={config.interests || ""}
+                  onChange={(_, raw) => setCfg("interests", raw)}
+                  placeholder="Hiking, Robotics, Open Source, Chess"
+                  full
+                  helperText="Hobbies and topics shown on your personal page."
+                />
+                <CommaSeparatedInput
+                  label="Languages (comma-separated)"
+                  values={config.languages || ""}
+                  onChange={(_, raw) => setCfg("languages", raw)}
+                  placeholder="English (Fluent), Bengali (Native), German (Basic)"
+                  full
+                  helperText="Spoken languages shown on your personal page."
+                />
+                <CommaSeparatedInput
+                  label="Personality tags (comma-separated)"
+                  values={config.personalityTags || ""}
+                  onChange={(_, raw) => setCfg("personalityTags", raw)}
+                  placeholder="Creative, Curious, Detail-oriented, Analytical"
+                  full
+                  helperText="Personality traits and values displayed on your personal page."
+                />
+              </div>
+            </div>
+
             <SaveBtn onClick={() => saveConfig("Profile saved!")} saving={savingConfig} label="Save profile" />
           </div>
         )}
@@ -558,9 +751,15 @@ export default function AdminDashboard() {
 
             <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
               <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-4">Typing roles</p>
-              <TextArea label="Roles (one per line, or comma-separated)" value={config.roles}
-                onChange={(v) => setCfg("roles", v)} rows={4} placeholder={"Full-Stack Developer\nUI/UX Designer\nFreelancer"} />
-              <p className="text-white/25 text-[11px] mt-2">These cycle with a typing animation under your name.</p>
+              <CommaSeparatedInput
+                label="Roles (one per line, or comma-separated)"
+                values={config.roles}
+                onChange={(_, raw) => setCfg("roles", raw)}
+                rows={3}
+                multiline
+                placeholder={"Full-Stack Developer\nUI/UX Designer\nFreelancer"}
+                helperText="These cycle with a typing animation under your name."
+              />
             </div>
 
             <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
@@ -584,8 +783,15 @@ export default function AdminDashboard() {
             <div className="rounded-2xl p-5 mb-5" style={cardStyle}>
               <p className="text-xs font-semibold text-white/50 uppercase tracking-wider font-syne mb-3">Tech marquee</p>
               <div className="mb-4"><Toggle label="Show scrolling tech marquee" checked={config.showMarquee} onChange={(v) => setCfg("showMarquee", v)} /></div>
-              <TextArea label="Tech stack (comma-separated)" value={config.techStack}
-                onChange={(v) => setCfg("techStack", v)} rows={2} placeholder="React, Next.js, TypeScript, Node.js" />
+              <CommaSeparatedInput
+                label="Tech stack (comma-separated)"
+                values={config.techStack}
+                onChange={(_, raw) => setCfg("techStack", raw)}
+                rows={2}
+                multiline
+                placeholder="React, Next.js, TypeScript, Node.js"
+                helperText="These scroll continuously in the marquee banner."
+              />
             </div>
 
             <SaveBtn onClick={() => saveConfig("Home hero saved!")} saving={savingConfig} label="Save home hero" />
@@ -634,7 +840,14 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-2 gap-4">
                 <TextField label="Page title" value={config.seoTitle} onChange={(v) => setCfg("seoTitle", v)} full />
                 <TextArea label="Meta description" value={config.seoDescription} onChange={(v) => setCfg("seoDescription", v)} rows={2} />
-                <TextField label="Keywords (comma-separated)" value={config.seoKeywords} onChange={(v) => setCfg("seoKeywords", v)} full />
+                <CommaSeparatedInput
+                  label="Keywords (comma-separated)"
+                  values={config.seoKeywords}
+                  onChange={(_, raw) => setCfg("seoKeywords", raw)}
+                  full
+                  placeholder="developer, designer, portfolio, web3, ai"
+                  helperText="Search engine metadata keywords for SEO."
+                />
               </div>
               <div className="grid grid-cols-2 gap-4 mt-4">
                 <ImageUpload label="Social share image (OG)" value={config.ogImage} onChange={(v) => setCfg("ogImage", v)} />
@@ -741,7 +954,14 @@ export default function AdminDashboard() {
                       Tip: Use standard HTML tags like &lt;p&gt;, &lt;strong&gt;, &lt;ul&gt;, &lt;li&gt;, &lt;a&gt;, &lt;code&gt; to format case studies.
                     </p>
                   </div>
-                  <TextField label="Tech (comma-separated)" value={editProject.tech.join(", ")} onChange={(v) => setEditProject((p) => p && { ...p, tech: v.split(",").map((s) => s.trim()).filter(Boolean) })} full />
+                  <CommaSeparatedInput
+                    label="Tech (comma-separated)"
+                    values={editProject.tech}
+                    onChange={(items) => setEditProject((p) => (p ? { ...p, tech: items } : null))}
+                    placeholder="e.g. Next.js, React, TypeScript, Tailwind CSS"
+                    full
+                    helperText="Type a comma or press Enter after each technology."
+                  />
                   <div className="col-span-2">
                     <ImageUpload label="Project image" value={editProject.imageURL} onChange={(v) => setEditProject((p) => p && { ...p, imageURL: v })}
                       focus={editProject.focus} onFocusChange={(v) => setEditProject((p) => p && { ...p, focus: v })} />
@@ -901,14 +1121,13 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    <TextField
+                    <CommaSeparatedInput
                       label="Tags (comma-separated)"
-                      value={(editPost.tags || []).join(", ")}
-                      onChange={(v) =>
-                        setEditPost((p) => p && { ...p, tags: v.split(",").map((s) => s.trim()).filter(Boolean) })
-                      }
+                      values={editPost.tags || []}
+                      onChange={(items) => setEditPost((p) => (p ? { ...p, tags: items } : null))}
                       full
-                      placeholder="Next.js, Tailwind, Blockchain, AI"
+                      placeholder="e.g. Next.js, Tailwind, Blockchain, AI"
+                      helperText="Type a comma or press Enter after each tag."
                     />
 
                     <TextArea
@@ -1392,8 +1611,17 @@ export default function AdminDashboard() {
                     onChange={(e) => setSkillGroups(skillGroups.map((x, j) => (j === gi ? { ...x, name: e.target.value } : x)))} onFocus={focusOn} onBlur={focusOff} />
                   <button onClick={() => setSkillGroups(skillGroups.filter((_, j) => j !== gi))} className="text-red-400/60 hover:text-red-400 text-xs font-syne">Remove group</button>
                 </div>
-                <TextArea label="Skills (comma-separated)" value={g.items.join(", ")}
-                  onChange={(v) => setSkillGroups(skillGroups.map((x, j) => (j === gi ? { ...x, items: v.split(",").map((s) => s.trim()).filter(Boolean) } : x)))} rows={2} />
+                <CommaSeparatedInput
+                  label="Skills (comma-separated)"
+                  values={g.items}
+                  onChange={(items) =>
+                    setSkillGroups(skillGroups.map((x, j) => (j === gi ? { ...x, items } : x)))
+                  }
+                  placeholder="e.g. EmbeddedLinux, FreeRTOS, C++, ARM, Linux Kernel"
+                  multiline
+                  rows={2}
+                  helperText="Type a comma or press Enter after each skill."
+                />
               </div>
             ))}
             <div className="flex gap-3">
