@@ -4,12 +4,14 @@ import {
   MapPin, Mail, Phone, Github, Linkedin, Twitter, Instagram,
   Youtube, Dribbble, Globe, FileText,
   GraduationCap, Briefcase, Award, Code2, Zap, Users, Star,
-  Heart, Languages, Sparkles, Pencil, Clock, Calendar, Sun, Moon,
-  Navigation, Building2,
+  Heart, Languages, Sparkles, Pencil, Calendar, Sun, Moon,
+  Navigation, Building2, Clock, ArrowUpRight
 } from "lucide-react";
 import { useSiteConfig } from "@/lib/hooks/useSiteConfig";
 import GlassCard, { CARD_PALETTE } from "@/components/GlassCard";
+import TiltCard from "@/components/TiltCard";
 import { highlightIcon, type HighlightsData } from "@/lib/highlightIcons";
+import { sound } from "@/lib/sound";
 
 interface SkillGroup { name: string; items: string[]; }
 interface SkillsData { groups: SkillGroup[]; }
@@ -45,7 +47,7 @@ function Counter({ value }: { value: string }) {
   return <>{parts[1]}{shown}{parts[3]}</>;
 }
 
-// ── Local time clock ──
+// ── Local time clock hook ──
 function useLocalTime(timezone?: string) {
   const [time, setTime] = useState<Date>(new Date());
   useEffect(() => {
@@ -62,69 +64,103 @@ function LocalTimeBadge({ location, timezone }: { location?: string; timezone?: 
   const dateStr = now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: tz });
   const hour = parseInt(now.toLocaleTimeString("en-US", { hour: "2-digit", hour12: false, timeZone: tz }));
   const isDaytime = hour >= 6 && hour < 20;
-  const tzShort = (() => { try { return new Intl.DateTimeFormat("en", { timeZoneName: "short", timeZone: tz }).formatToParts(now).find(p => p.type === "timeZoneName")?.value ?? tz; } catch { return tz; } })();
+  const tzShort = (() => {
+    try {
+      return new Intl.DateTimeFormat("en", { timeZoneName: "short", timeZone: tz }).formatToParts(now).find(p => p.type === "timeZoneName")?.value ?? tz;
+    } catch {
+      return tz;
+    }
+  })();
 
   return (
-    <div className="w-full rounded-2xl overflow-hidden"
-      style={{ background: "linear-gradient(135deg, hsl(210 60% 8% / 0.8), hsl(210 60% 5% / 0.6))", border: "1px solid hsl(var(--p) / 0.15)" }}>
+    <div
+      className="w-full rounded-2xl overflow-hidden"
+      style={{
+        background: "linear-gradient(135deg, hsl(210 60% 8% / 0.8), hsl(210 60% 5% / 0.6))",
+        border: "1px solid hsl(var(--p) / 0.2)",
+      }}
+    >
       {/* Header bar */}
-      <div className="flex items-center justify-between px-3 py-2"
-        style={{ borderBottom: "1px solid hsl(var(--p) / 0.08)", background: "hsl(var(--p) / 0.05)" }}>
+      <div
+        className="flex items-center justify-between px-3.5 py-2.5"
+        style={{ borderBottom: "1px solid hsl(var(--p) / 0.1)", background: "hsl(var(--p) / 0.06)" }}
+      >
         <div className="flex items-center gap-1.5">
-          <Navigation size={10} style={{ color: "hsl(var(--p))" }} />
-          <span className="text-[9px] uppercase tracking-widest font-syne" style={{ color: "hsl(var(--p))" }}>Location</span>
+          <Navigation size={11} style={{ color: "hsl(var(--p))" }} />
+          <span className="text-[10px] uppercase tracking-widest font-syne font-bold" style={{ color: "hsl(var(--p))" }}>
+            Local Time &amp; Zone
+          </span>
         </div>
-        <div className="flex items-center gap-1">
-          {isDaytime
-            ? <Sun size={10} style={{ color: "#f59e0b" }} />
-            : <Moon size={10} style={{ color: "#818cf8" }} />}
-          <span className="text-[9px]" style={{ color: isDaytime ? "#f59e0b" : "#818cf8" }}>{isDaytime ? "Day" : "Night"}</span>
+        <div className="flex items-center gap-1.5">
+          {isDaytime ? (
+            <Sun size={12} style={{ color: "#f59e0b" }} />
+          ) : (
+            <Moon size={12} style={{ color: "#818cf8" }} />
+          )}
+          <span className="text-[10px] font-medium" style={{ color: isDaytime ? "#f59e0b" : "#818cf8" }}>
+            {isDaytime ? "Daytime" : "Nighttime"}
+          </span>
         </div>
       </div>
 
       {/* Body */}
-      <div className="px-3 py-3 flex flex-col gap-2.5">
+      <div className="p-3.5 flex flex-col gap-3">
         {/* Location name */}
         {location && (
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ background: "hsl(var(--p) / 0.12)", border: "1px solid hsl(var(--p) / 0.2)" }}>
-              <MapPin size={11} style={{ color: "hsl(var(--p))" }} />
+            <div
+              className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: "hsl(var(--p) / 0.12)", border: "1px solid hsl(var(--p) / 0.2)" }}
+            >
+              <MapPin size={12} style={{ color: "hsl(var(--p))" }} />
             </div>
-            <span className="text-white/70 text-xs font-medium">{location}</span>
+            <span className="text-white/80 text-xs font-medium">{location}</span>
           </div>
         )}
 
         {/* Time display */}
         <div className="flex items-end justify-between">
           <div>
-            <p className="text-white font-bold text-2xl font-syne leading-none tracking-tight">{timeStr}</p>
-            <p className="text-white/35 text-[10px] mt-1 flex items-center gap-1">
-              <Calendar size={8} />{dateStr}
+            <p className="text-white font-bold text-2xl font-syne leading-none tracking-tight">
+              {timeStr}
+            </p>
+            <p className="text-white/40 text-[10px] mt-1.5 flex items-center gap-1">
+              <Calendar size={10} />
+              {dateStr}
             </p>
           </div>
           <div className="text-right">
-            <div className="px-2 py-0.5 rounded-lg text-[9px] font-mono"
-              style={{ background: "hsl(var(--p) / 0.1)", color: "hsl(var(--p))", border: "1px solid hsl(var(--p) / 0.2)" }}>
+            <div
+              className="px-2.5 py-1 rounded-lg text-[10px] font-mono font-medium"
+              style={{
+                background: "hsl(var(--p) / 0.12)",
+                color: "hsl(var(--p))",
+                border: "1px solid hsl(var(--p) / 0.25)",
+              }}
+            >
               {tzShort}
             </div>
           </div>
         </div>
 
-        {/* Time bars — hour progress */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-white/20 text-[8px] uppercase tracking-widest">Day progress</span>
-            <span className="text-white/25 text-[8px]">{Math.round(((hour * 60 + now.getMinutes()) / 1440) * 100)}%</span>
+        {/* Day progress bar */}
+        <div className="space-y-1 pt-1">
+          <div className="flex items-center justify-between text-[9px]">
+            <span className="text-white/30 uppercase tracking-wider font-syne">Day progress</span>
+            <span className="text-white/40 font-mono">
+              {Math.round(((hour * 60 + now.getMinutes()) / 1440) * 100)}%
+            </span>
           </div>
-          <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: "hsl(210 60% 12%)" }}>
-            <div className="h-full rounded-full transition-all duration-1000"
+          <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "hsl(210 60% 12%)" }}>
+            <div
+              className="h-full rounded-full transition-all duration-1000"
               style={{
                 width: `${((hour * 60 + now.getMinutes()) / 1440) * 100}%`,
                 background: isDaytime
                   ? "linear-gradient(90deg, hsl(185 100% 48%), hsl(45 95% 55%))"
                   : "linear-gradient(90deg, hsl(205 90% 56%), hsl(270 80% 65%))",
-              }} />
+              }}
+            />
           </div>
         </div>
       </div>
@@ -133,9 +169,12 @@ function LocalTimeBadge({ location, timezone }: { location?: string; timezone?: 
 }
 
 const TYPE_ICON: Record<string, typeof Briefcase> = {
-  "Bachelor": GraduationCap, "Master": GraduationCap,
-  "Full-Time": Briefcase, "Intern": Code2,
-  "Certificate": Award, "Freelance": Users,
+  "Bachelor": GraduationCap,
+  "Master": GraduationCap,
+  "Full-Time": Briefcase,
+  "Intern": Code2,
+  "Certificate": Award,
+  "Freelance": Users,
 };
 
 export default function PersonalPage() {
@@ -145,326 +184,577 @@ export default function PersonalPage() {
   const [highlights, setHighlights] = useState<HighlightsData | null>(null);
 
   useEffect(() => {
-    fetch("/api/skills").then(r => r.json()).then(setSkills).catch(() => {});
-    fetch("/api/career").then(r => r.json()).then(setCareer).catch(() => {});
-    fetch("/api/highlights").then(r => r.json()).then(setHighlights).catch(() => {});
+    fetch("/api/skills").then((r) => r.json()).then(setSkills).catch(() => {});
+    fetch("/api/career").then((r) => r.json()).then(setCareer).catch(() => {});
+    fetch("/api/highlights").then((r) => r.json()).then(setHighlights).catch(() => {});
   }, []);
 
-  const contacts = [
-    { icon: Mail,     label: "Email",     value: cfg.email,                         href: `mailto:${cfg.email}` },
-    { icon: Phone,    label: "Phone",     value: cfg.phone,                         href: `tel:${cfg.phone}` },
-    { icon: FileText, label: "Resume",    value: cfg.resumeURL ? "Download CV" : "", href: cfg.resumeURL },
-    { icon: Github,   label: "GitHub",    value: cfg.github   ? "View profile" : "", href: cfg.github },
-    { icon: Linkedin, label: "LinkedIn",  value: cfg.linkedin ? "View profile" : "", href: cfg.linkedin },
-    { icon: Twitter,  label: "Twitter",   value: cfg.twitter  ? "View profile" : "", href: cfg.twitter },
-    { icon: Instagram,label: "Instagram", value: cfg.instagram? "View profile" : "", href: cfg.instagram },
-    { icon: Youtube,  label: "YouTube",   value: cfg.youtube  ? "View channel" : "", href: cfg.youtube },
-    { icon: Dribbble, label: "Dribbble",  value: cfg.dribbble ? "View profile" : "", href: cfg.dribbble },
-    { icon: Globe,    label: "Website",   value: cfg.website  ? "Visit site"   : "", href: cfg.website },
-  ].filter(c => c.value);
+  const socials = [
+    { icon: Github,    label: "GitHub",    href: cfg.github },
+    { icon: Linkedin,  label: "LinkedIn",  href: cfg.linkedin },
+    { icon: Twitter,   label: "Twitter",   href: cfg.twitter },
+    { icon: Instagram, label: "Instagram", href: cfg.instagram },
+    { icon: Youtube,   label: "YouTube",   href: cfg.youtube },
+    { icon: Dribbble,  label: "Dribbble",  href: cfg.dribbble },
+    { icon: Globe,     label: "Website",   href: cfg.website },
+  ].filter((c) => c.href);
 
-  const stats = (cfg.stats ?? []).filter(s => s.value || s.label);
+  const stats = (cfg.stats ?? []).filter((s) => s.value || s.label);
 
-  // Flatten all career items into a single timeline (most-recent first)
-  const timeline = career?.sections.flatMap(sec =>
-    sec.items.map(item => ({ ...item, section: sec.title }))
-  ) ?? [];
+  // Flatten all career items into a single timeline
+  const timeline =
+    career?.sections.flatMap((sec) =>
+      sec.items.map((item) => ({ ...item, section: sec.title }))
+    ) ?? [];
 
   return (
-    <main className="h-screen w-screen overflow-y-auto md:pl-20 px-4 pb-24 md:pb-12 pt-8">
-      <div className="max-w-4xl mx-auto fade-up">
+    <main className="h-screen w-screen overflow-y-auto md:pl-20 px-4 pb-28 md:pb-16 pt-8 relative">
+      <div className="max-w-6xl mx-auto fade-up space-y-6">
 
-        {/* ── Header ── */}
-        <div className="mb-8">
-          <p className="text-xs uppercase tracking-widest mb-1 font-syne" style={{ color: "hsl(var(--p))" }}>About</p>
-          <h1 className="text-3xl font-bold font-syne text-white">Personal</h1>
-        </div>
-
-        {/* ── Top grid: profile + skills ── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-          {/* Profile card */}
-          <GlassCard className="md:col-span-1 rounded-2xl p-6 flex flex-col items-center text-center gap-4 relative" depth={6}>
-            {/* Admin link */}
-            <a
-              href="/admin/dashboard"
-              title="Edit in Admin Panel"
-              className="absolute top-3 right-3 z-10 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium font-syne transition-all duration-200 hover:scale-105"
-              style={{ background: "hsl(var(--p) / 0.1)", border: "1px solid hsl(var(--p) / 0.25)", color: "hsl(var(--p))" }}
-            >
-              <Pencil size={10} /> Edit
-            </a>
-
-            {/* Avatar */}
-            <div className="w-20 h-20 rounded-2xl overflow-hidden"
-              style={{ border: "2px solid hsl(var(--p) / 0.3)", background: "hsl(210 60% 12%)" }}>
-              {cfg.photoURL
-                ? <img src={cfg.photoURL} alt="Profile" className="w-full h-full object-cover" style={{ objectPosition: cfg.photoFocus }} />
-                : <div className="w-full h-full flex items-center justify-center text-4xl">🧑‍💻</div>}
-            </div>
-
-            {/* Name / role */}
-            <div>
-              <h2 className="text-white font-bold text-lg font-syne">{cfg.heroTitle}</h2>
-              <p className="text-xs font-medium mt-0.5" style={{ color: "hsl(var(--p))" }}>{cfg.heroSubtitle}</p>
-              {cfg.location && (
-                <div className="flex items-center justify-center gap-1 mt-2 text-white/35 text-xs">
-                  <MapPin size={10} /> {cfg.location}
-                </div>
-              )}
-            </div>
-
-            {cfg.aboutText && (
-              <p className="text-white/45 text-xs leading-relaxed">{cfg.aboutText}</p>
-            )}
-
-            {/* Availability status badge */}
-            {(() => {
-              const color = cfg.availabilityColor === "amber"
-                ? { bg: "hsl(40 96% 54% / 0.1)", border: "hsl(40 96% 54% / 0.3)", dot: "#f59e0b", glow: "#f59e0b" }
-                : cfg.availabilityColor === "red"
-                ? { bg: "hsl(0 84% 60% / 0.1)", border: "hsl(0 84% 60% / 0.3)", dot: "#ef4444", glow: "#ef4444" }
-                : { bg: "hsl(142 70% 45% / 0.1)", border: "hsl(142 70% 45% / 0.3)", dot: "#22c55e", glow: "#22c55e" };
-              return (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs w-fit"
-                  style={{ background: color.bg, border: `1px solid ${color.border}` }}>
-                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: color.dot, boxShadow: `0 0 6px ${color.glow}` }} />
-                  <span className="text-white/60">{cfg.availabilityStatus || "Open to work"}</span>
-                </div>
-              );
-            })()}
-
-            {/* Currently working on */}
-            {cfg.currentlyWorkingOn && (
-              <div className="w-full rounded-xl px-3 py-2.5 text-left"
-                style={{ background: "hsl(var(--p) / 0.06)", border: "1px solid hsl(var(--p) / 0.12)" }}>
-                <p className="text-white/30 text-[9px] uppercase tracking-widest font-syne mb-1 flex items-center gap-1">
-                  <Sparkles size={9} /> Currently working on
-                </p>
-                <p className="text-white/65 text-xs leading-relaxed">{cfg.currentlyWorkingOn}</p>
-              </div>
-            )}
-
-            {/* Personality tags */}
-            {cfg.personalityTags && (
-              <div className="w-full text-left">
-                <p className="text-white/25 text-[9px] uppercase tracking-widest font-syne mb-2 flex items-center gap-1">
-                  <Star size={9} /> Traits
-                </p>
-                <div className="flex flex-wrap gap-1.5 justify-start">
-                  {cfg.personalityTags.split(",").map(t => t.trim()).filter(Boolean).map(tag => (
-                    <span key={tag}
-                      className="px-2 py-0.5 rounded-full text-[10px]"
-                      style={{ background: "hsl(var(--p2) / 0.08)", color: "hsl(var(--p2))", border: "1px solid hsl(var(--p2) / 0.18)" }}>
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Interests */}
-            {cfg.interests && (
-              <div className="w-full text-left">
-                <p className="text-white/25 text-[9px] uppercase tracking-widest font-syne mb-2 flex items-center gap-1">
-                  <Heart size={9} /> Interests
-                </p>
-                <div className="flex flex-wrap gap-1.5 justify-start">
-                  {cfg.interests.split(",").map(t => t.trim()).filter(Boolean).map(interest => (
-                    <span key={interest}
-                      className="px-2 py-0.5 rounded-full text-[10px]"
-                      style={{ background: "hsl(var(--p) / 0.08)", color: "hsl(195 70% 75%)", border: "1px solid hsl(var(--p) / 0.15)" }}>
-                      {interest}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Languages */}
-            {cfg.languages && (
-              <div className="w-full text-left">
-                <p className="text-white/25 text-[9px] uppercase tracking-widest font-syne mb-2 flex items-center gap-1">
-                  <Languages size={9} /> Languages
-                </p>
-                <div className="flex flex-col gap-1.5">
-                  {cfg.languages.split(",").map(l => l.trim()).filter(Boolean).map(lang => {
-                    const [name, ...rest] = lang.split("(");
-                    const level = rest.join("(").replace(")", "").trim();
-                    return (
-                      <div key={lang} className="flex items-center justify-between px-3 py-1.5 rounded-xl"
-                        style={{ background: "hsl(var(--p) / 0.05)", border: "1px solid hsl(var(--p) / 0.1)" }}>
-                        <span className="text-white/60 text-xs">{name.trim()}</span>
-                        {level && <span className="text-[10px]" style={{ color: "hsl(var(--p))" }}>{level}</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* ── Local time & place card ── */}
-            <LocalTimeBadge location={cfg.location} />
-
-            {/* ── Quick info row ── */}
-            {(cfg.age || cfg.location) && (
-              <div className="w-full grid grid-cols-2 gap-2">
-                {cfg.location && (
-                  <div className="rounded-xl px-3 py-2.5 flex flex-col gap-1"
-                    style={{ background: "hsl(185 100% 48% / 0.06)", border: "1px solid hsl(185 100% 48% / 0.15)" }}>
-                    <div className="flex items-center gap-1">
-                      <Building2 size={9} style={{ color: "hsl(185 100% 48%)" }} />
-                      <span className="text-[8px] uppercase tracking-widest font-syne" style={{ color: "hsl(185 100% 48%)" }}>Based in</span>
-                    </div>
-                    <p className="text-white/65 text-[11px] font-medium leading-tight">{cfg.location}</p>
-                  </div>
-                )}
-                {cfg.age && (
-                  <div className="rounded-xl px-3 py-2.5 flex flex-col gap-1"
-                    style={{ background: "hsl(270 80% 65% / 0.06)", border: "1px solid hsl(270 80% 65% / 0.15)" }}>
-                    <div className="flex items-center gap-1">
-                      <Calendar size={9} style={{ color: "hsl(270 80% 65%)" }} />
-                      <span className="text-[8px] uppercase tracking-widest font-syne" style={{ color: "hsl(270 80% 65%)" }}>Age</span>
-                    </div>
-                    <p className="text-white/65 text-[11px] font-medium">{cfg.age}</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Contact links */}
-            <div className="w-full flex flex-col gap-2 mt-auto">
-              {contacts.map(({ icon: Icon, label, value, href }) => (
-                <a key={label} href={href} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all hover:scale-[1.01]"
-                  style={{ background: "hsl(var(--p) / 0.05)", border: "1px solid hsl(var(--p) / 0.1)" }}>
-                  <Icon size={13} style={{ color: "hsl(var(--p))" }} />
-                  <span className="text-white/50 text-xs flex-1 truncate">{value}</span>
-                </a>
-              ))}
-            </div>
-          </GlassCard>
-
-          {/* Right column — Beyond Code highlights fill the upper area, skills below */}
-          <div className="md:col-span-2 flex flex-col gap-4">
-
-            {/* ── Beyond Code — editable highlight cards (fills the upper-right) ── */}
-            {highlights && highlights.items.length > 0 && (
-              <GlassCard className="rounded-2xl p-5 md:p-6" depth={6}>
-                <div className="mb-4">
-                  <p className="text-xs uppercase tracking-widest font-syne flex items-center gap-1.5" style={{ color: "hsl(var(--p))" }}>
-                    <Sparkles size={12} /> {highlights.title || "Beyond Code"}
-                  </p>
-                  {highlights.intro && <p className="text-white/45 text-sm mt-1.5">{highlights.intro}</p>}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {highlights.items.map((item, i) => {
-                    const accent = CARD_PALETTE[i % CARD_PALETTE.length];
-                    const Icon = highlightIcon(item.icon);
-                    return (
-                      <div key={item.id}
-                        className="rounded-xl p-4 flex items-start gap-3 transition-all duration-300 hover:scale-[1.02]"
-                        style={{ background: `linear-gradient(150deg, hsl(${accent} / 0.1), hsl(210 60% 8% / 0.5))`, border: `1px solid hsl(${accent} / 0.22)` }}>
-                        <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                          style={{ background: `hsl(${accent} / 0.14)`, border: `1px solid hsl(${accent} / 0.32)`, boxShadow: `0 0 16px hsl(${accent} / 0.18)` }}>
-                          <Icon size={20} style={{ color: `hsl(${accent})` }} />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-white/90 text-sm font-semibold font-syne leading-tight">{item.title}</p>
-                          {item.description && <p className="text-white/50 text-xs mt-1 leading-relaxed">{item.description}</p>}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </GlassCard>
-            )}
-
-            {/* Skills */}
-            {skills?.groups.map((group, gi) => {
-              const accent = CARD_PALETTE[gi % CARD_PALETTE.length];
-              return (
-                <GlassCard key={group.name} accent={accent} className="rounded-2xl p-5" depth={6}>
-                  <p className="text-xs uppercase tracking-widest mb-3 font-syne" style={{ color: `hsl(${accent})` }}>{group.name}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {group.items.map(skill => (
-                      <span key={skill}
-                        className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all hover:scale-105 cursor-default"
-                        style={{ background: `hsl(${accent} / 0.1)`, color: "hsl(195,70%,82%)", border: `1px solid hsl(${accent} / 0.22)` }}>
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                </GlassCard>
-              );
-            })}
-
-            {/* ── Career & Education (moved beside the profile card) ── */}
-            {timeline.length > 0 && (
-              <GlassCard className="rounded-2xl p-6" depth={5}>
-                <p className="text-xs uppercase tracking-widest mb-5 font-syne" style={{ color: "hsl(var(--p))" }}>
-                  Career &amp; Education
-                </p>
-                <div className="relative flex flex-col gap-0">
-                  {/* vertical line */}
-                  <div className="absolute left-[18px] top-3 bottom-3 w-px"
-                    style={{ background: "linear-gradient(180deg, hsl(var(--p) / 0.5), hsl(var(--p2) / 0.2))" }} />
-
-                  {timeline.map((item, i) => {
-                    const Icon = TYPE_ICON[item.type] ?? Briefcase;
-                    const accent = CARD_PALETTE[i % CARD_PALETTE.length];
-                    return (
-                      <div key={item.id} className="relative flex items-start gap-4 pb-5 last:pb-0 group">
-                        {/* dot + icon */}
-                        <div className="relative z-10 flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110"
-                          style={{
-                            background: `hsl(${accent} / 0.15)`,
-                            border: `1px solid hsl(${accent} / 0.35)`,
-                            boxShadow: `0 0 12px hsl(${accent} / 0.15)`,
-                          }}>
-                          <Icon size={15} style={{ color: `hsl(${accent})` }} />
-                        </div>
-                        {/* text */}
-                        <div className="flex-1 pt-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2 flex-wrap">
-                            <p className="text-white/85 text-sm font-semibold font-syne leading-tight">{item.title}</p>
-                            <span className="text-[10px] px-2 py-0.5 rounded-full shrink-0"
-                              style={{ background: `hsl(${accent} / 0.12)`, color: `hsl(${accent})`, border: `1px solid hsl(${accent} / 0.2)` }}>
-                              {item.years}
-                            </span>
-                          </div>
-                          <p className="text-white/40 text-xs mt-0.5">{item.org}
-                            <span className="ml-2 opacity-60">· {item.type}</span>
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </GlassCard>
-            )}
+        {/* ── Page Header ── */}
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-widest mb-1 font-syne" style={{ color: "hsl(var(--p))" }}>
+              Profile &amp; Biography
+            </p>
+            <h1 className="text-3xl sm:text-4xl font-bold font-syne text-white">
+              Personal
+            </h1>
           </div>
+
+          {/* Admin link */}
+          <a
+            href="/admin/dashboard"
+            onClick={() => sound.playClick()}
+            title="Edit in Admin Panel"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold font-syne transition-all duration-200 hover:scale-105"
+            style={{
+              background: "hsl(var(--p) / 0.1)",
+              border: "1px solid hsl(var(--p) / 0.25)",
+              color: "hsl(var(--p))",
+            }}
+          >
+            <Pencil size={12} /> Edit Profile
+          </a>
         </div>
 
-        {/* ── Stats row ── */}
+        {/* ── 1. Top Profile Hero Bento Banner ── */}
+        <GlassCard className="rounded-3xl p-6 sm:p-8" depth={4}>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+
+            {/* Left: Avatar + Bio details */}
+            <div className="lg:col-span-8 flex flex-col sm:flex-row items-start sm:items-center gap-5 sm:gap-6">
+              {/* Avatar */}
+              <div
+                className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl overflow-hidden shrink-0 shadow-xl"
+                style={{
+                  border: "2px solid hsl(var(--p) / 0.35)",
+                  background: "hsl(210 60% 10%)",
+                  boxShadow: "0 0 30px hsl(var(--p) / 0.15)",
+                }}
+              >
+                {cfg.photoURL ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={cfg.photoURL}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                    style={{ objectPosition: cfg.photoFocus }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-5xl">🧑‍💻</div>
+                )}
+              </div>
+
+              {/* Identity & Text */}
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h2 className="text-white font-extrabold text-2xl sm:text-3xl font-syne leading-tight">
+                    {cfg.heroTitle}
+                  </h2>
+
+                  {/* Availability badge */}
+                  {(() => {
+                    const color =
+                      cfg.availabilityColor === "amber"
+                        ? { bg: "hsl(40 96% 54% / 0.12)", border: "hsl(40 96% 54% / 0.3)", dot: "#f59e0b" }
+                        : cfg.availabilityColor === "red"
+                        ? { bg: "hsl(0 84% 60% / 0.12)", border: "hsl(0 84% 60% / 0.3)", dot: "#ef4444" }
+                        : { bg: "hsl(142 70% 45% / 0.12)", border: "hsl(142 70% 45% / 0.3)", dot: "#22c55e" };
+                    return (
+                      <span
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium"
+                        style={{ background: color.bg, border: `1px solid ${color.border}` }}
+                      >
+                        <span
+                          className="w-1.5 h-1.5 rounded-full animate-pulse"
+                          style={{ background: color.dot, boxShadow: `0 0 6px ${color.dot}` }}
+                        />
+                        <span className="text-white/80">{cfg.availabilityStatus || "Open to work"}</span>
+                      </span>
+                    );
+                  })()}
+                </div>
+
+                <p className="text-sm font-semibold font-syne" style={{ color: "hsl(var(--p))" }}>
+                  {cfg.heroSubtitle}
+                </p>
+
+                {cfg.aboutText && (
+                  <p className="text-white/55 text-xs sm:text-sm leading-relaxed max-w-2xl pt-1">
+                    {cfg.aboutText}
+                  </p>
+                )}
+
+                {/* Socials and actions row */}
+                <div className="flex flex-wrap items-center gap-2 pt-2">
+                  {cfg.email && (
+                    <a
+                      href={`mailto:${cfg.email}`}
+                      onClick={() => sound.playClick()}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold font-syne transition-all hover:scale-105"
+                      style={{
+                        background: "hsl(var(--p) / 0.15)",
+                        color: "hsl(var(--p))",
+                        border: "1px solid hsl(var(--p) / 0.3)",
+                      }}
+                    >
+                      <Mail size={13} /> {cfg.email}
+                    </a>
+                  )}
+
+                  {cfg.resumeURL && (
+                    <a
+                      href={cfg.resumeURL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => sound.playPop()}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold font-syne transition-all hover:scale-105 text-white/80 hover:text-white"
+                      style={{
+                        background: "hsl(0 0% 100% / 0.05)",
+                        border: "1px solid hsl(0 0% 100% / 0.12)",
+                      }}
+                    >
+                      <FileText size={13} /> Resume <ArrowUpRight size={12} />
+                    </a>
+                  )}
+
+                  {socials.map(({ icon: Icon, label, href }) => (
+                    <a
+                      key={label}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={label}
+                      onClick={() => sound.playClick()}
+                      className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110"
+                      style={{
+                        background: "hsl(0 0% 100% / 0.04)",
+                        color: "hsl(var(--p))",
+                        border: "1px solid hsl(var(--p) / 0.18)",
+                      }}
+                    >
+                      <Icon size={14} />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Live Location & Time Widget */}
+            <div className="lg:col-span-4 w-full">
+              <LocalTimeBadge location={cfg.location} />
+            </div>
+
+          </div>
+        </GlassCard>
+
+        {/* ── 2. Key Stats Milestone Strip (Tilt Cards) ── */}
         {stats.length > 0 && (
-          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
             {[
               { icon: Star,      color: CARD_PALETTE[0] },
               { icon: Briefcase, color: CARD_PALETTE[1] },
               { icon: Users,     color: CARD_PALETTE[2] },
               { icon: Zap,       color: CARD_PALETTE[4] },
             ].slice(0, stats.length).map(({ icon: Icon, color }, i) => (
-              <GlassCard key={i} accent={color} className="rounded-2xl p-4 text-center" depth={5}>
-                <Icon size={16} className="mx-auto mb-2" style={{ color: `hsl(${color})` }} />
-                <p className="font-syne font-extrabold text-2xl" style={{ color: `hsl(${color})` }}>
-                  <Counter value={stats[i].value} />
-                </p>
-                <p className="text-white/40 text-[11px] mt-0.5 leading-tight">{stats[i].label}</p>
-              </GlassCard>
+              <TiltCard key={i} maxTilt={7} className="h-full">
+                <div
+                  className="rounded-2xl p-5 text-center h-full flex flex-col justify-center items-center"
+                  style={{
+                    background: `linear-gradient(150deg, hsl(${color} / 0.1), hsl(210 60% 8% / 0.55))`,
+                    backdropFilter: "blur(16px)",
+                    WebkitBackdropFilter: "blur(16px)",
+                    border: `1px solid hsl(${color} / 0.22)`,
+                    boxShadow: `0 10px 30px rgba(0,0,0,0.3), 0 0 20px hsl(${color} / 0.08)`,
+                  }}
+                >
+                  <Icon size={17} className="mb-1.5" style={{ color: `hsl(${color})` }} />
+                  <p className="font-syne font-extrabold text-2xl sm:text-3xl text-glow" style={{ color: `hsl(${color})` }}>
+                    <Counter value={stats[i].value} />
+                  </p>
+                  <p className="text-white/45 text-xs mt-1 font-medium leading-tight">
+                    {stats[i].label}
+                  </p>
+                </div>
+              </TiltCard>
             ))}
           </div>
         )}
+
+        {/* ── 3. Balanced Two-Column Bento Grid ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          {/* ──── Left Column: Career & Skills (7 cols) ──── */}
+          <div className="lg:col-span-7 flex flex-col gap-6">
+
+            {/* Career & Education Timeline */}
+            {timeline.length > 0 ? (
+              <GlassCard className="rounded-3xl p-6 sm:p-7" depth={4}>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <p className="text-xs uppercase tracking-widest font-syne" style={{ color: "hsl(var(--p))" }}>
+                      Experience &amp; Education
+                    </p>
+                    <h3 className="text-xl font-bold font-syne text-white mt-1">
+                      Career Journey
+                    </h3>
+                  </div>
+                  <span
+                    className="text-xs px-2.5 py-1 rounded-full font-mono"
+                    style={{
+                      background: "hsl(var(--p) / 0.1)",
+                      color: "hsl(var(--p))",
+                      border: "1px solid hsl(var(--p) / 0.2)",
+                    }}
+                  >
+                    {timeline.length} Milestones
+                  </span>
+                </div>
+
+                <div className="relative flex flex-col gap-0 pl-2">
+                  {/* Vertical connecting line */}
+                  <div
+                    className="absolute left-[22px] top-3 bottom-4 w-px"
+                    style={{
+                      background: "linear-gradient(180deg, hsl(var(--p) / 0.6), hsl(var(--p2) / 0.15))",
+                    }}
+                  />
+
+                  {timeline.map((item, i) => {
+                    const Icon = TYPE_ICON[item.type] ?? Briefcase;
+                    const accent = CARD_PALETTE[i % CARD_PALETTE.length];
+                    return (
+                      <div key={item.id} className="relative flex items-start gap-4 pb-6 last:pb-0 group">
+                        {/* Dot / Icon badge */}
+                        <div
+                          className="relative z-10 shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110"
+                          style={{
+                            background: `hsl(${accent} / 0.18)`,
+                            border: `1px solid hsl(${accent} / 0.4)`,
+                            boxShadow: `0 0 16px hsl(${accent} / 0.2)`,
+                          }}
+                        >
+                          <Icon size={16} style={{ color: `hsl(${accent})` }} />
+                        </div>
+
+                        {/* Content box */}
+                        <div
+                          className="flex-1 rounded-2xl p-4 transition-all duration-200 hover:scale-[1.01]"
+                          style={{
+                            background: `hsl(${accent} / 0.05)`,
+                            border: `1px solid hsl(${accent} / 0.14)`,
+                          }}
+                        >
+                          <div className="flex items-start justify-between gap-2 flex-wrap">
+                            <div>
+                              <p className="text-white font-bold text-sm font-syne leading-tight">
+                                {item.title}
+                              </p>
+                              <p className="text-white/50 text-xs mt-1">
+                                {item.org}
+                                <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium"
+                                  style={{ background: `hsl(${accent} / 0.15)`, color: `hsl(${accent})` }}>
+                                  {item.type}
+                                </span>
+                              </p>
+                            </div>
+                            <span
+                              className="text-[10px] px-2.5 py-1 rounded-full font-mono font-medium shrink-0"
+                              style={{
+                                background: `hsl(${accent} / 0.15)`,
+                                color: `hsl(${accent})`,
+                                border: `1px solid hsl(${accent} / 0.25)`,
+                              }}
+                            >
+                              {item.years}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </GlassCard>
+            ) : null}
+
+            {/* Technical Skills & Expertise */}
+            {skills?.groups && skills.groups.length > 0 && (
+              <GlassCard className="rounded-3xl p-6 sm:p-7" depth={4}>
+                <div className="mb-5">
+                  <p className="text-xs uppercase tracking-widest font-syne" style={{ color: "hsl(var(--p))" }}>
+                    Expertise
+                  </p>
+                  <h3 className="text-xl font-bold font-syne text-white mt-1">
+                    Skills &amp; Technologies
+                  </h3>
+                </div>
+
+                <div className="space-y-4">
+                  {skills.groups.map((group, gi) => {
+                    const accent = CARD_PALETTE[gi % CARD_PALETTE.length];
+                    return (
+                      <div key={group.name} className="space-y-2">
+                        <p className="text-xs uppercase tracking-wider font-syne font-semibold" style={{ color: `hsl(${accent})` }}>
+                          {group.name}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {group.items.map((skill) => (
+                            <span
+                              key={skill}
+                              className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all hover:scale-105 cursor-default"
+                              style={{
+                                background: `hsl(${accent} / 0.1)`,
+                                color: "hsl(195 75% 88%)",
+                                border: `1px solid hsl(${accent} / 0.22)`,
+                              }}
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </GlassCard>
+            )}
+
+          </div>
+
+          {/* ──── Right Column: Highlights, Traits, Languages & Quick Contact (5 cols) ──── */}
+          <div className="lg:col-span-5 flex flex-col gap-6">
+
+            {/* Beyond Code / Highlights */}
+            {highlights && highlights.items.length > 0 && (
+              <GlassCard className="rounded-3xl p-6" depth={4}>
+                <div className="mb-4">
+                  <p className="text-xs uppercase tracking-widest font-syne flex items-center gap-1.5" style={{ color: "hsl(var(--p))" }}>
+                    <Sparkles size={12} /> {highlights.title || "Beyond Code"}
+                  </p>
+                  {highlights.intro && (
+                    <p className="text-white/50 text-xs mt-1 leading-relaxed">
+                      {highlights.intro}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  {highlights.items.map((item, i) => {
+                    const accent = CARD_PALETTE[i % CARD_PALETTE.length];
+                    const Icon = highlightIcon(item.icon);
+                    return (
+                      <div
+                        key={item.id}
+                        className="rounded-2xl p-3.5 flex items-start gap-3 transition-all hover:scale-[1.02]"
+                        style={{
+                          background: `linear-gradient(150deg, hsl(${accent} / 0.1), hsl(210 60% 8% / 0.5))`,
+                          border: `1px solid hsl(${accent} / 0.22)`,
+                        }}
+                      >
+                        <div
+                          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                          style={{
+                            background: `hsl(${accent} / 0.16)`,
+                            border: `1px solid hsl(${accent} / 0.35)`,
+                            color: `hsl(${accent})`,
+                          }}
+                        >
+                          <Icon size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-white font-semibold text-xs font-syne leading-tight">
+                            {item.title}
+                          </p>
+                          {item.description && (
+                            <p className="text-white/45 text-[11px] mt-1 leading-relaxed">
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </GlassCard>
+            )}
+
+            {/* Currently Working On */}
+            {cfg.currentlyWorkingOn && (
+              <GlassCard className="rounded-3xl p-5" depth={4}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles size={14} style={{ color: "hsl(var(--p))" }} />
+                  <p className="text-xs uppercase tracking-wider font-syne font-bold" style={{ color: "hsl(var(--p))" }}>
+                    Current Focus
+                  </p>
+                </div>
+                <p className="text-white/70 text-xs sm:text-sm leading-relaxed">
+                  {cfg.currentlyWorkingOn}
+                </p>
+              </GlassCard>
+            )}
+
+            {/* Personal Traits & Interests */}
+            {(cfg.personalityTags || cfg.interests) && (
+              <GlassCard className="rounded-3xl p-5 space-y-4" depth={4}>
+                {cfg.personalityTags && (
+                  <div>
+                    <p className="text-white/35 text-[10px] uppercase tracking-widest font-syne mb-2 flex items-center gap-1.5 font-bold">
+                      <Star size={11} style={{ color: "hsl(var(--p))" }} /> Personal Traits
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {cfg.personalityTags.split(",").map((t) => t.trim()).filter(Boolean).map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-medium"
+                          style={{
+                            background: "hsl(var(--p) / 0.08)",
+                            color: "hsl(var(--p))",
+                            border: "1px solid hsl(var(--p) / 0.2)",
+                          }}
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {cfg.interests && (
+                  <div>
+                    <p className="text-white/35 text-[10px] uppercase tracking-widest font-syne mb-2 flex items-center gap-1.5 font-bold">
+                      <Heart size={11} style={{ color: "hsl(330 85% 62%)" }} /> Interests &amp; Passions
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {cfg.interests.split(",").map((t) => t.trim()).filter(Boolean).map((interest) => (
+                        <span
+                          key={interest}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-medium"
+                          style={{
+                            background: "hsl(330 85% 62% / 0.08)",
+                            color: "hsl(330 85% 72%)",
+                            border: "1px solid hsl(330 85% 62% / 0.2)",
+                          }}
+                        >
+                          {interest}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </GlassCard>
+            )}
+
+            {/* Languages */}
+            {cfg.languages && (
+              <GlassCard className="rounded-3xl p-5" depth={4}>
+                <p className="text-white/35 text-[10px] uppercase tracking-widest font-syne mb-3 flex items-center gap-1.5 font-bold">
+                  <Languages size={11} style={{ color: "hsl(var(--p))" }} /> Languages
+                </p>
+                <div className="flex flex-col gap-2">
+                  {cfg.languages.split(",").map((l) => l.trim()).filter(Boolean).map((lang) => {
+                    const [name, ...rest] = lang.split("(");
+                    const level = rest.join("(").replace(")", "").trim();
+                    return (
+                      <div
+                        key={lang}
+                        className="flex items-center justify-between px-3.5 py-2 rounded-xl"
+                        style={{
+                          background: "hsl(var(--p) / 0.06)",
+                          border: "1px solid hsl(var(--p) / 0.12)",
+                        }}
+                      >
+                        <span className="text-white/80 text-xs font-medium">{name.trim()}</span>
+                        {level && (
+                          <span
+                            className="text-[10px] px-2 py-0.5 rounded-md font-mono font-medium"
+                            style={{ background: "hsl(var(--p) / 0.15)", color: "hsl(var(--p))" }}
+                          >
+                            {level}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </GlassCard>
+            )}
+
+            {/* Quick Contact & Details Card */}
+            <GlassCard className="rounded-3xl p-5" depth={4}>
+              <p className="text-xs uppercase tracking-wider font-syne font-bold mb-3" style={{ color: "hsl(var(--p))" }}>
+                Direct Contact
+              </p>
+
+              <div className="space-y-2.5">
+                {cfg.email && (
+                  <a
+                    href={`mailto:${cfg.email}`}
+                    onClick={() => sound.playClick()}
+                    className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all hover:scale-[1.01]"
+                    style={{
+                      background: "hsl(0 0% 100% / 0.03)",
+                      border: "1px solid hsl(var(--p) / 0.14)",
+                    }}
+                  >
+                    <Mail size={14} style={{ color: "hsl(var(--p))" }} />
+                    <span className="text-white/70 text-xs truncate flex-1">{cfg.email}</span>
+                  </a>
+                )}
+
+                {cfg.phone && (
+                  <a
+                    href={`tel:${cfg.phone}`}
+                    onClick={() => sound.playClick()}
+                    className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all hover:scale-[1.01]"
+                    style={{
+                      background: "hsl(0 0% 100% / 0.03)",
+                      border: "1px solid hsl(var(--p) / 0.14)",
+                    }}
+                  >
+                    <Phone size={14} style={{ color: "hsl(var(--p))" }} />
+                    <span className="text-white/70 text-xs truncate flex-1">{cfg.phone}</span>
+                  </a>
+                )}
+
+                {cfg.location && (
+                  <div
+                    className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl"
+                    style={{
+                      background: "hsl(0 0% 100% / 0.02)",
+                      border: "1px solid hsl(0 0% 100% / 0.06)",
+                    }}
+                  >
+                    <Building2 size={14} style={{ color: "hsl(var(--p))" }} />
+                    <span className="text-white/50 text-xs">{cfg.location}</span>
+                  </div>
+                )}
+              </div>
+            </GlassCard>
+
+          </div>
+
+        </div>
 
       </div>
     </main>
