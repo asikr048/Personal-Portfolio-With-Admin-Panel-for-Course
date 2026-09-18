@@ -113,37 +113,119 @@ async function callOpenAI(key: string, model: string, systemPrompt: string, mess
   return data.choices?.[0]?.message?.content ?? "No response.";
 }
 
-async function callGemini(key: string, model: string, systemPrompt: string, messages: Message[]): Promise<string> {
-  let modelId = (model || "").trim();
-  if (!modelId) {
-    modelId = "gemini-3.8-flash";
-  }
+// ── Gemini Flash Fallback Chain ──────────────────────────────────────
+// If a model is busy (503), rate-limited (429), or unavailable,
+// the system seamlessly switches to reliable Flash backup models.
+const GEMINI_FLASH_FALLBACKS = [
+  "gemini-3.8-flash",
+  "gemini-3.7-flash",
+  "gemini-3.6-flash",
+  "gemini-3.5-flash",
+  "gemini-3-flash-preview",
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-lite",
+  "gemini-1.5-flash",
+];
 
+async function callSingleGeminiModel(
+  key: string,
+  modelId: string,
+  systemPrompt: string,
+  messages: Message[]
+): Promise<{ ok: boolean; status: number; text?: string; error?: string }> {
   const contents = messages.map((m) => ({
     role: m.role === "assistant" ? "model" : "user",
     parts: [{ text: m.content }],
   }));
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${key.trim()}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents,
-        generationConfig: { maxOutputTokens: 600, temperature: 0.5 },
-      }),
-    }
-  );
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 14000); // 14s timeout per attempt
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Gemini error (${res.status}): ${err}`);
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${key.trim()}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents,
+          generationConfig: { maxOutputTokens: 600, temperature: 0.5 },
+        }),
+        signal: controller.signal,
+      }
+    );
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      return { ok: false, status: res.status, error: errText };
+    }
+
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) {
+      return { ok: false, status: 200, error: "Empty candidate parts from Gemini model." };
+    }
+    return { ok: true, status: 200, text };
+  } catch (err: unknown) {
+    const isAbort = (err as Error)?.name === "AbortError";
+    return {
+      ok: false,
+      status: isAbort ? 408 : 500,
+      error: isAbort ? "Request timed out" : (err as Error)?.message || "Network connection error",
+    };
+  }
+}
+
+async function callGemini(key: string, model: string, systemPrompt: string, messages: Message[]): Promise<string> {
+  const primaryModel = (model || "").trim() || "gemini-3.8-flash";
+
+  // Build candidate chain starting with primary requested model, then fallbacks
+  const chain: string[] = [primaryModel];
+  for (const fb of GEMINI_FLASH_FALLBACKS) {
+    if (!chain.includes(fb)) {
+      chain.push(fb);
+    }
   }
 
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "No response.";
+  let lastError = "";
+
+  for (let i = 0; i < chain.length; i++) {
+    const currentModel = chain[i];
+    const result = await callSingleGeminiModel(key, currentModel, systemPrompt, messages);
+
+    if (result.ok && result.text) {
+      if (i > 0) {
+        console.warn(
+          `[Gemini Auto-Failover] Primary model '${primaryModel}' was busy/unavailable. Seamlessly fulfilled chat request using fallback model '${currentModel}'.`
+        );
+      }
+      return result.text;
+    }
+
+    lastError = `[${currentModel}] (${result.status}): ${result.error || "Unknown error"}`;
+
+    // Fast-fail if API key is reported leaked or invalid by Google
+    if (
+      result.error &&
+      (result.error.includes("API_KEY_INVALID") ||
+        result.error.includes("API key not valid") ||
+        result.error.includes("leaked") ||
+        result.error.includes("PERMISSION_DENIED"))
+    ) {
+      throw new Error(
+        `Gemini API Key Error: Your API key is invalid, leaked, or unauthorized. Please generate a fresh key from Google AI Studio (https://aistudio.google.com) and update it in Admin Settings.`
+      );
+    }
+
+    console.warn(
+      `[Gemini Auto-Failover] Model '${currentModel}' returned status ${result.status}. Switching to backup Flash model...`
+    );
+  }
+
+  throw new Error(`Gemini service error: All candidate models were busy or unavailable. Details: ${lastError}`);
 }
 
 async function callClaude(key: string, model: string, systemPrompt: string, messages: Message[]): Promise<string> {

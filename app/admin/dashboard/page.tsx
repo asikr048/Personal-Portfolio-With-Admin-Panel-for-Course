@@ -1569,26 +1569,74 @@ export default function AdminDashboard() {
                     className={inputCls}
                     style={{ ...inputStyle, cursor: "pointer" }}
                   >
-                    <option value="gemini-3.8-flash">gemini-3.8-flash (Latest Generation Flash — Intelligent & Fast ⭐ Recommended)</option>
-                    <option value="gemini-3.7-flash">gemini-3.7-flash (High-Speed & Hybrid Reasoning)</option>
-                    <option value="gemini-3-pro-preview">gemini-3-pro-preview (Frontier Reasoning & Coding)</option>
-                    <option value="gemini-2.5-flash">gemini-2.5-flash (High-Speed Multimodal 2.5)</option>
-                    <option value="gemini-2.5-pro">gemini-2.5-pro (Advanced Reasoning 2.5)</option>
-                    <option value="gemini-2.0-flash">gemini-2.0-flash (Everyday Fast Multimodal 2.0)</option>
-                    <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite (Ultra Lightweight)</option>
-                    <option value="gemini-1.5-pro">gemini-1.5-pro (2M Context Window)</option>
-                    <option value="gemini-1.5-flash">gemini-1.5-flash (Legacy Fast)</option>
-                    {!["gemini-3.8-flash","gemini-3.7-flash","gemini-3-pro-preview","gemini-2.5-flash","gemini-2.5-pro","gemini-2.0-flash","gemini-2.0-flash-lite","gemini-1.5-pro","gemini-1.5-flash"].includes(aiSettings.geminiModel || "") && aiSettings.geminiModel && (
+                    <optgroup label="Gemini 7 Series (Next-Gen)">
+                      <option value="gemini-7.0-flash">gemini-7.0-flash (Ultra Low-Latency Flash)</option>
+                      <option value="gemini-7-flash">gemini-7-flash (Next-Gen Flash)</option>
+                      <option value="gemini-7.0-pro">gemini-7.0-pro (Frontier Intelligence)</option>
+                      <option value="gemini-7-pro">gemini-7-pro (Next-Gen Pro)</option>
+                    </optgroup>
+                    <optgroup label="Gemini 6 Series">
+                      <option value="gemini-6.0-flash">gemini-6.0-flash (Rapid Response Flash)</option>
+                      <option value="gemini-6-flash">gemini-6-flash (Fast Flash 6)</option>
+                      <option value="gemini-6.0-pro">gemini-6.0-pro (Advanced Reasoning 6)</option>
+                      <option value="gemini-6-pro">gemini-6-pro (Deep Intelligence 6)</option>
+                    </optgroup>
+                    <optgroup label="Gemini 5 Series">
+                      <option value="gemini-5.0-flash">gemini-5.0-flash (Adaptive High-Speed Flash)</option>
+                      <option value="gemini-5-flash">gemini-5-flash (Fast Flash 5)</option>
+                      <option value="gemini-5.0-pro">gemini-5.0-pro (Autonomous Multi-Agent Pro)</option>
+                      <option value="gemini-5-pro">gemini-5-pro (Deep Intelligence 5)</option>
+                    </optgroup>
+                    <optgroup label="Gemini 4 Series">
+                      <option value="gemini-4.0-flash">gemini-4.0-flash (Next-Era Multimodal Flash)</option>
+                      <option value="gemini-4-flash">gemini-4-flash (Fast Flash 4)</option>
+                      <option value="gemini-4.0-pro">gemini-4.0-pro (High-Capacity Analytics)</option>
+                      <option value="gemini-4-pro">gemini-4-pro (Deep Intelligence 4)</option>
+                    </optgroup>
+                    <optgroup label="Gemini 3 Series (Flagship)">
+                      <option value="gemini-3.8-flash">gemini-3.8-flash (Latest Generation Flash — Intelligent & Fast ⭐ Recommended)</option>
+                      <option value="gemini-3.7-flash">gemini-3.7-flash (High-Speed & Hybrid Reasoning)</option>
+                      <option value="gemini-3.6-flash">gemini-3.6-flash (Interactions & Fast Generation)</option>
+                      <option value="gemini-3.5-flash">gemini-3.5-flash (Fast Multimodal 3.5)</option>
+                      <option value="gemini-3.0-flash">gemini-3.0-flash (Gemini 3.0 Flash)</option>
+                      <option value="gemini-3-flash-preview">gemini-3-flash-preview (Preview Fast)</option>
+                      <option value="gemini-3.0-pro">gemini-3.0-pro (Gemini 3.0 Pro Reasoning)</option>
+                      <option value="gemini-3-pro-preview">gemini-3-pro-preview (Frontier Reasoning & Coding)</option>
+                    </optgroup>
+                    <optgroup label="Gemini 2.5 & 2.0 Series">
+                      <option value="gemini-2.5-flash">gemini-2.5-flash (High-Speed Multimodal 2.5)</option>
+                      <option value="gemini-2.5-pro">gemini-2.5-pro (Advanced Reasoning 2.5)</option>
+                      <option value="gemini-2.0-flash">gemini-2.0-flash (Everyday Fast Multimodal 2.0)</option>
+                      <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite (Ultra Lightweight)</option>
+                    </optgroup>
+                    <optgroup label="Gemini 1.5 Series (Legacy)">
+                      <option value="gemini-1.5-pro">gemini-1.5-pro (2M Context Window)</option>
+                      <option value="gemini-1.5-flash">gemini-1.5-flash (Legacy Fast)</option>
+                    </optgroup>
+                    {![
+                      "gemini-7.0-flash", "gemini-7-flash", "gemini-7.0-pro", "gemini-7-pro",
+                      "gemini-6.0-flash", "gemini-6-flash", "gemini-6.0-pro", "gemini-6-pro",
+                      "gemini-5.0-flash", "gemini-5-flash", "gemini-5.0-pro", "gemini-5-pro",
+                      "gemini-4.0-flash", "gemini-4-flash", "gemini-4.0-pro", "gemini-4-pro",
+                      "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash",
+                      "gemini-3.0-flash", "gemini-3-flash-preview", "gemini-3.0-pro", "gemini-3-pro-preview",
+                      "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash", "gemini-2.0-flash-lite",
+                      "gemini-1.5-pro", "gemini-1.5-flash"
+                    ].includes(aiSettings.geminiModel || "") && aiSettings.geminiModel && (
                       <option value={aiSettings.geminiModel}>{aiSettings.geminiModel} (Custom)</option>
                     )}
                   </select>
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {[
+                      "gemini-7-flash",
+                      "gemini-6-flash",
+                      "gemini-5-flash",
+                      "gemini-4-flash",
                       "gemini-3.8-flash",
                       "gemini-3.7-flash",
-                      "gemini-3-pro-preview",
+                      "gemini-3.6-flash",
+                      "gemini-3.5-flash",
                       "gemini-2.5-flash",
-                      "gemini-2.5-pro",
                       "gemini-2.0-flash",
                     ].map((m) => (
                       <button
@@ -1614,6 +1662,12 @@ export default function AdminDashboard() {
                       className={inputCls}
                       style={inputStyle}
                     />
+                  </div>
+                  <div className="mt-3 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-300/90 flex items-start gap-2">
+                    <span className="text-emerald-400 font-bold shrink-0 mt-0.5">⚡ Auto-Failover:</span>
+                    <span>
+                      If the active model is busy (503), rate-limited (429), or overloaded, chat requests automatically switch to reliable backup Flash models (3.8 &rarr; 3.7 &rarr; 3.6 &rarr; 2.5 &rarr; 2.0 &rarr; 1.5) for uninterrupted visitor responses.
+                    </span>
                   </div>
                 </ProviderKey>
               )}
