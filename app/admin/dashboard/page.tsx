@@ -160,9 +160,9 @@ export default function AdminDashboard() {
     openaiKey: "",
     openaiModel: "gpt-4o-mini",
     geminiKey: "",
-    geminiModel: "gemini-2.0-flash",
+    geminiModel: "gemini-3.8-flash",
     claudeKey: "",
-    claudeModel: "claude-3-5-haiku-20241022",
+    claudeModel: "claude-3-7-sonnet-20250219",
     openrouterKey: "",
     openrouterModel: "deepseek/deepseek-chat",
     customName: "DeepSeek / Custom AI",
@@ -1564,22 +1564,53 @@ export default function AdminDashboard() {
                   setShowKeys={setShowKeys}
                 >
                   <select
-                    value={aiSettings.geminiModel || "gemini-2.0-flash"}
+                    value={aiSettings.geminiModel || "gemini-3.8-flash"}
                     onChange={(e) => setAiSettings((s) => ({ ...s, geminiModel: e.target.value }))}
                     className={inputCls}
                     style={{ ...inputStyle, cursor: "pointer" }}
                   >
-                    <option value="gemini-2.0-flash">gemini-2.0-flash (Fast, Multimodal — Recommended ⭐)</option>
+                    <option value="gemini-3.8-flash">gemini-3.8-flash (Latest Generation Flash — Intelligent & Fast ⭐ Recommended)</option>
+                    <option value="gemini-3.7-flash">gemini-3.7-flash (High-Speed & Hybrid Reasoning)</option>
+                    <option value="gemini-3-pro-preview">gemini-3-pro-preview (Frontier Reasoning & Coding)</option>
+                    <option value="gemini-2.5-flash">gemini-2.5-flash (High-Speed Multimodal 2.5)</option>
+                    <option value="gemini-2.5-pro">gemini-2.5-pro (Advanced Reasoning 2.5)</option>
+                    <option value="gemini-2.0-flash">gemini-2.0-flash (Everyday Fast Multimodal 2.0)</option>
                     <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite (Ultra Lightweight)</option>
-                    <option value="gemini-1.5-flash">gemini-1.5-flash (Balanced)</option>
-                    <option value="gemini-1.5-pro">gemini-1.5-pro (Complex Reasoning & 2M Context)</option>
+                    <option value="gemini-1.5-pro">gemini-1.5-pro (2M Context Window)</option>
+                    <option value="gemini-1.5-flash">gemini-1.5-flash (Legacy Fast)</option>
+                    {!["gemini-3.8-flash","gemini-3.7-flash","gemini-3-pro-preview","gemini-2.5-flash","gemini-2.5-pro","gemini-2.0-flash","gemini-2.0-flash-lite","gemini-1.5-pro","gemini-1.5-flash"].includes(aiSettings.geminiModel || "") && aiSettings.geminiModel && (
+                      <option value={aiSettings.geminiModel}>{aiSettings.geminiModel} (Custom)</option>
+                    )}
                   </select>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {[
+                      "gemini-3.8-flash",
+                      "gemini-3.7-flash",
+                      "gemini-3-pro-preview",
+                      "gemini-2.5-flash",
+                      "gemini-2.5-pro",
+                      "gemini-2.0-flash",
+                    ].map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setAiSettings((s) => ({ ...s, geminiModel: m }))}
+                        className={`px-2 py-0.5 rounded text-[10px] font-mono transition-all ${
+                          (aiSettings.geminiModel || "gemini-3.8-flash") === m
+                            ? "bg-cyan-400/20 text-cyan-400 border border-cyan-400/40"
+                            : "bg-white/5 hover:bg-white/10 text-white/60"
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
                   <div className="mt-2">
                     <label className="text-white/30 text-[11px] block mb-1">Or enter custom Gemini model ID:</label>
                     <input
                       value={aiSettings.geminiModel || ""}
                       onChange={(e) => setAiSettings((s) => ({ ...s, geminiModel: e.target.value }))}
-                      placeholder="e.g. gemini-2.0-flash"
+                      placeholder="e.g. gemini-3.8-flash"
                       className={inputCls}
                       style={inputStyle}
                     />
@@ -1601,23 +1632,42 @@ export default function AdminDashboard() {
                   setShowKeys={setShowKeys}
                 >
                   <select
-                    value={aiSettings.openaiModel || "gpt-4o-mini"}
+                    value={aiSettings.openaiModel || "gpt-4o"}
                     onChange={(e) => setAiSettings((s) => ({ ...s, openaiModel: e.target.value }))}
                     className={inputCls}
                     style={{ ...inputStyle, cursor: "pointer" }}
                   >
-                    <option value="gpt-4o-mini">gpt-4o-mini (Fast & Low Cost — Recommended ⭐)</option>
-                    <option value="gpt-4o">gpt-4o (Flagship Omni Model)</option>
-                    <option value="o3-mini">o3-mini (High-Speed Reasoning)</option>
-                    <option value="o1">o1 (Advanced Deep Reasoning)</option>
-                    <option value="gpt-4-turbo">gpt-4-turbo</option>
+                    <option value="gpt-4o">gpt-4o (Flagship Omni Multimodal ⭐ Recommended)</option>
+                    <option value="gpt-4o-mini">gpt-4o-mini (Fast & Low Cost)</option>
+                    <option value="o3-mini">o3-mini (High-Speed STEM & Advanced Reasoning ⭐)</option>
+                    <option value="o1">o1 (Frontier Deep Reasoning)</option>
+                    <option value="gpt-4-turbo">gpt-4-turbo (Legacy Turbo)</option>
+                    {!["gpt-4o","gpt-4o-mini","o3-mini","o1","gpt-4-turbo"].includes(aiSettings.openaiModel || "") && aiSettings.openaiModel && (
+                      <option value={aiSettings.openaiModel}>{aiSettings.openaiModel} (Custom)</option>
+                    )}
                   </select>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {["gpt-4o", "gpt-4o-mini", "o3-mini", "o1"].map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setAiSettings((s) => ({ ...s, openaiModel: m }))}
+                        className={`px-2 py-0.5 rounded text-[10px] font-mono transition-all ${
+                          (aiSettings.openaiModel || "gpt-4o") === m
+                            ? "bg-cyan-400/20 text-cyan-400 border border-cyan-400/40"
+                            : "bg-white/5 hover:bg-white/10 text-white/60"
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
                   <div className="mt-2">
                     <label className="text-white/30 text-[11px] block mb-1">Or enter custom OpenAI model ID:</label>
                     <input
                       value={aiSettings.openaiModel || ""}
                       onChange={(e) => setAiSettings((s) => ({ ...s, openaiModel: e.target.value }))}
-                      placeholder="e.g. gpt-4o-mini"
+                      placeholder="e.g. gpt-4o"
                       className={inputCls}
                       style={inputStyle}
                     />
@@ -1639,16 +1689,39 @@ export default function AdminDashboard() {
                   setShowKeys={setShowKeys}
                 >
                   <select
-                    value={aiSettings.claudeModel || "claude-3-5-haiku-20241022"}
+                    value={aiSettings.claudeModel || "claude-3-7-sonnet-20250219"}
                     onChange={(e) => setAiSettings((s) => ({ ...s, claudeModel: e.target.value }))}
                     className={inputCls}
                     style={{ ...inputStyle, cursor: "pointer" }}
                   >
-                    <option value="claude-3-5-haiku-20241022">claude-3-5-haiku-20241022 (Fast & Cost Efficient ⭐)</option>
-                    <option value="claude-3-7-sonnet-20250219">claude-3-7-sonnet-20250219 (Latest 3.7 Hybrid Reasoning)</option>
-                    <option value="claude-3-5-sonnet-20241022">claude-3-5-sonnet-20241022 (Industry Leading)</option>
+                    <option value="claude-3-7-sonnet-20250219">claude-3-7-sonnet-20250219 (Latest 3.7 Hybrid Reasoning ⭐ Recommended)</option>
+                    <option value="claude-3-5-sonnet-20241022">claude-3-5-sonnet-20241022 (Industry Leading 3.5)</option>
+                    <option value="claude-3-5-haiku-20241022">claude-3-5-haiku-20241022 (Fast & Cost Efficient)</option>
                     <option value="claude-3-opus-20240229">claude-3-opus-20240229 (Deep Analysis)</option>
+                    {!["claude-3-7-sonnet-20250219","claude-3-5-sonnet-20241022","claude-3-5-haiku-20241022","claude-3-opus-20240229"].includes(aiSettings.claudeModel || "") && aiSettings.claudeModel && (
+                      <option value={aiSettings.claudeModel}>{aiSettings.claudeModel} (Custom)</option>
+                    )}
                   </select>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {[
+                      { id: "claude-3-7-sonnet-20250219", label: "claude-3.7-sonnet" },
+                      { id: "claude-3-5-sonnet-20241022", label: "claude-3.5-sonnet" },
+                      { id: "claude-3-5-haiku-20241022", label: "claude-3.5-haiku" },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setAiSettings((s) => ({ ...s, claudeModel: item.id }))}
+                        className={`px-2 py-0.5 rounded text-[10px] font-mono transition-all ${
+                          (aiSettings.claudeModel || "claude-3-7-sonnet-20250219") === item.id
+                            ? "bg-cyan-400/20 text-cyan-400 border border-cyan-400/40"
+                            : "bg-white/5 hover:bg-white/10 text-white/60"
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
                   <div className="mt-2">
                     <label className="text-white/30 text-[11px] block mb-1">Or enter custom Claude model ID:</label>
                     <input
@@ -1678,7 +1751,7 @@ export default function AdminDashboard() {
                   <input
                     value={aiSettings.openrouterModel || "deepseek/deepseek-chat"}
                     onChange={(e) => setAiSettings((s) => ({ ...s, openrouterModel: e.target.value }))}
-                    placeholder="e.g. deepseek/deepseek-chat or google/gemini-2.0-flash-001"
+                    placeholder="e.g. google/gemini-3.8-flash, deepseek/deepseek-r1"
                     className={inputCls}
                     style={inputStyle}
                     onFocus={focusOn}
@@ -1686,16 +1759,22 @@ export default function AdminDashboard() {
                   />
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {[
-                      "deepseek/deepseek-chat",
+                      "google/gemini-3.8-flash",
+                      "anthropic/claude-3.7-sonnet",
                       "deepseek/deepseek-r1",
-                      "google/gemini-2.0-flash-001",
+                      "deepseek/deepseek-chat",
+                      "openai/o3-mini",
                       "meta-llama/llama-3.3-70b-instruct",
                     ].map((m) => (
                       <button
                         key={m}
                         type="button"
                         onClick={() => setAiSettings((s) => ({ ...s, openrouterModel: m }))}
-                        className="px-2 py-0.5 rounded text-[10px] bg-white/5 hover:bg-white/10 text-white/60 font-mono"
+                        className={`px-2 py-0.5 rounded text-[10px] font-mono transition-all ${
+                          aiSettings.openrouterModel === m
+                            ? "bg-cyan-400/20 text-cyan-400 border border-cyan-400/40"
+                            : "bg-white/5 hover:bg-white/10 text-white/60"
+                        }`}
                       >
                         {m.split("/")[1]}
                       </button>
@@ -1761,6 +1840,27 @@ export default function AdminDashboard() {
                     placeholder="e.g. deepseek-chat, llama-3.3-70b-versatile, mistral"
                     full
                   />
+                  <div className="flex flex-wrap gap-1.5 -mt-1 mb-1">
+                    {[
+                      { name: "DeepSeek-V3", model: "deepseek-chat" },
+                      { name: "DeepSeek-R1", model: "deepseek-reasoner" },
+                      { name: "Llama-3.3-70B", model: "llama-3.3-70b-versatile" },
+                      { name: "Qwen-2.5", model: "qwen-2.5-72b-instruct" },
+                    ].map((item) => (
+                      <button
+                        key={item.model}
+                        type="button"
+                        onClick={() => setAiSettings((s) => ({ ...s, customModel: item.model }))}
+                        className={`px-2 py-0.5 rounded text-[10px] font-mono transition-all ${
+                          aiSettings.customModel === item.model
+                            ? "bg-cyan-400/20 text-cyan-400 border border-cyan-400/40"
+                            : "bg-white/5 hover:bg-white/10 text-white/60"
+                        }`}
+                      >
+                        {item.name}
+                      </button>
+                    ))}
+                  </div>
 
                   <div className="p-3 rounded-xl bg-white/5 border border-white/5 text-[11px] text-white/50 space-y-1">
                     <p>💡 <strong>Quick setups:</strong></p>

@@ -115,9 +115,8 @@ async function callOpenAI(key: string, model: string, systemPrompt: string, mess
 
 async function callGemini(key: string, model: string, systemPrompt: string, messages: Message[]): Promise<string> {
   let modelId = (model || "").trim();
-  // Normalize if deprecated or invalid preview model
-  if (!modelId || modelId === "gemini-2.5-pro" || modelId === "gemini-2.5-flash") {
-    modelId = "gemini-2.0-flash";
+  if (!modelId) {
+    modelId = "gemini-3.8-flash";
   }
 
   const contents = messages.map((m) => ({
